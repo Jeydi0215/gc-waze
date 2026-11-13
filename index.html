@@ -25,8 +25,8 @@ a{color:inherit}
 
 /* ---------- hero ---------- */
 .hero{
-  position:relative; min-height:100svh; display:grid; grid-template-rows:auto 1fr auto;
-  padding:20px clamp(16px,4vw,48px) clamp(16px,3vw,32px); overflow:hidden; isolation:isolate;
+  position:relative; min-height:100svh; display:grid; grid-template-columns:minmax(0,1fr); grid-template-rows:auto 1fr auto;
+  padding:20px clamp(16px,4vw,48px) clamp(16px,3vw,32px); overflow:hidden; overflow:clip; isolation:isolate;
   background:
     radial-gradient(60% 55% at 70% 48%, #1c6d49 0%, rgba(28,109,73,0) 70%),
     linear-gradient(180deg,#0a3a27 0%,var(--deep) 100%);
@@ -45,8 +45,14 @@ a{color:inherit}
   width:100%; max-width:1180px; margin:0 auto; display:flex; align-items:center; justify-content:space-between;
   gap:16px; padding:10px 12px 10px 18px; border-radius:999px;
   background:rgba(228,243,232,.08); border:1px solid rgba(228,243,232,.16);
-  backdrop-filter:blur(14px); -webkit-backdrop-filter:blur(14px);
+  backdrop-filter:blur(14px); -webkit-backdrop-filter:blur(14px); position:relative; z-index:10;
 }
+.burger{display:none; width:44px; height:44px; flex:none; border-radius:50%; border:1px solid rgba(228,243,232,.25); background:rgba(228,243,232,.08); cursor:pointer; padding:0; place-content:center; gap:5px}
+.burger span{display:block; width:18px; height:2px; border-radius:2px; background:var(--mint); transition:transform .2s, opacity .2s}
+.nav.open .burger span:nth-child(1){transform:translateY(7px) rotate(45deg)}
+.nav.open .burger span:nth-child(2){opacity:0}
+.nav.open .burger span:nth-child(3){transform:translateY(-7px) rotate(-45deg)}
+.links .nav-map{display:none}
 .brand{display:flex; align-items:center; gap:10px; text-decoration:none; font-family:var(--display); font-weight:800; font-size:1.15rem; letter-spacing:-.01em}
 .brand svg{width:28px; height:28px}
 .links{display:flex; gap:6px; list-style:none; margin:0; padding:0}
@@ -73,14 +79,14 @@ a{color:inherit}
 .cta{display:flex; flex-wrap:wrap; gap:12px}
 
 /* ---------- 3D stage ---------- */
-.stage{position:relative; height:clamp(340px,44vw,520px); perspective:1500px}
+.stage{position:relative; height:clamp(340px,44vw,520px); perspective:1500px; -webkit-perspective:1500px; transform:translateZ(0)}
 .float,.tilt,.spin,.world{position:absolute; left:50%; top:60%; width:0; height:0; transform-style:preserve-3d}
 .tilt,.spin,.world{left:0; top:0}
-.float{scale:var(--k,1.12); animation:bob 6s ease-in-out infinite}
+.float{transform:translate3d(0,0,0) scale(var(--k,1.12)); animation:bob 6s ease-in-out infinite; -webkit-transform-style:preserve-3d}
 .tilt{transform:rotateX(-27deg)}
-.spin{animation:spin 48s linear infinite}
+.spin{animation:spin 48s linear infinite; will-change:transform}
 @keyframes spin{to{transform:rotateY(360deg)}}
-@keyframes bob{50%{translate:0 -14px}}
+@keyframes bob{50%{transform:translate3d(0,-14px,0) scale(var(--k,1.12))}}
 .shadow{
   position:absolute; left:50%; top:86%; width:60%; height:36px; translate:-50% 0; border-radius:50%;
   background:radial-gradient(closest-side, rgba(0,0,0,.45), transparent); filter:blur(6px);
@@ -161,14 +167,38 @@ a{color:inherit}
 .grid span{display:block; margin-top:4px; font-size:.8rem; opacity:.75}
 
 @media (max-width:900px){
-  .main{grid-template-columns:1fr}
+  .main{grid-template-columns:minmax(0,1fr)}
   .copy{padding-top:12px}
   .stage{--k:.8; order:-1; height:360px}
-  .details{grid-template-columns:1fr}
-  .links{display:none}
+  .details{grid-template-columns:minmax(0,1fr)}
   .eta{right:0; top:0}
+  .brand{margin-right:auto}
+  .burger{display:grid}
+  .links{display:none; position:absolute; left:0; right:0; top:calc(100% + 8px); flex-direction:column; gap:2px; padding:8px;
+    border-radius:24px; background:#0a3624; border:1px solid rgba(228,243,232,.16); box-shadow:0 18px 44px rgba(0,0,0,.4)}
+  .nav.open .links{display:flex}
+  .links a{padding:13px 16px; font-size:1rem}
 }
-@media (max-width:480px){ .stage{--k:.62; height:320px} .nav{padding-left:14px} .btn{padding:11px 18px} }
+@media (max-width:480px){
+  .hero{padding-inline:14px}
+  .stage{--k:.62; height:300px}
+  .nav{padding:8px 8px 8px 14px}
+  .nav>.btn{display:none}
+  .links .nav-map{display:block}
+  .links .nav-map a{background:var(--route); color:#1b3a10; text-align:center; font-weight:600; margin-top:4px}
+  .copy h1{font-size:clamp(2.1rem,10.5vw,2.6rem); max-width:12ch}
+  .cta .btn{flex:1 1 100%; text-align:center}
+  .eta{padding:8px 12px 8px 8px; gap:10px}
+  .eta .dot{width:32px; height:32px; border-radius:10px}
+  .eta strong{font-size:.92rem}
+  .eta span{font-size:.75rem}
+  .details{padding:18px; border-radius:22px}
+  .grid li{flex-basis:160px}
+  .sec{padding-inline:16px}
+  .cform .btn{justify-self:stretch}
+  .foot{flex-direction:column}
+}
+@media (hover:none){ .grid li:hover,.ocard:hover{transform:none} .btn:hover{transform:none; box-shadow:none} }
 @media (prefers-reduced-motion:reduce){ .spin,.float,.shadow,.route,.ring{animation:none} }
 
 
@@ -213,13 +243,15 @@ a{color:inherit}
       <svg viewBox="0 0 32 32" aria-hidden="true"><path d="M16 2C9.9 2 5 6.8 5 12.8 5 20.6 16 30 16 30s11-9.4 11-17.2C27 6.8 22.1 2 16 2Z" fill="#f6d55c"/><circle cx="16" cy="12.5" r="4.4" fill="#08301f"/></svg>
       GC Wayfinder
     </a>
-    <ul class="links">
+    <ul class="links" id="navlinks">
       <li><a href="#home" aria-current="page">Home</a></li>
       <li><a href="#about">About</a></li>
       <li><a href="#organizations">Organizations</a></li>
       <li><a href="#contact">Contact</a></li>
+      <li class="nav-map"><a href="map.html">Open the map</a></li>
     </ul>
     <a class="btn" href="map.html">Open the map</a>
+    <button class="burger" id="burger" type="button" aria-label="Menu" aria-expanded="false" aria-controls="navlinks"><span></span><span></span><span></span></button>
   </nav>
 
   <!-- HERO -->
@@ -385,6 +417,15 @@ a{color:inherit}
 </script>
 
 <script>
+(function(){
+  const nav=document.querySelector('.nav'), b=document.getElementById('burger');
+  const set=o=>{nav.classList.toggle('open',o); b.setAttribute('aria-expanded',o)};
+  b.addEventListener('click',()=>set(!nav.classList.contains('open')));
+  nav.querySelectorAll('.links a').forEach(a=>a.addEventListener('click',()=>set(false)));
+  document.addEventListener('keydown',e=>{if(e.key==='Escape') set(false)});
+  document.addEventListener('click',e=>{if(!nav.contains(e.target)) set(false)});
+  matchMedia('(min-width:901px)').addEventListener('change',e=>{if(e.matches) set(false)});
+})();
 /* Front-end only: connect this to your backend or an email service to receive messages. */
 document.getElementById('cform').addEventListener('submit',function(e){
   e.preventDefault(); document.getElementById('sent').textContent='Message sent. Thank you!'; this.reset();
