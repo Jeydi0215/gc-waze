@@ -1,0 +1,394 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>GC Wayfinder – Navigate Gordon College</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,800&family=Figtree:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --deep:#08301f; --forest:#0f4a33; --leaf:#2f8f5f; --mint:#e4f3e8; --mist:#9cc9b0;
+  --route:#f6d55c; --paper:#efe9d6;
+  --display:"Bricolage Grotesque","Trebuchet MS",system-ui,sans-serif;
+  --body:"Figtree",system-ui,-apple-system,"Segoe UI",sans-serif;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{
+  margin:0; font-family:var(--body); color:var(--mint); background:var(--deep);
+  -webkit-font-smoothing:antialiased;
+}
+a{color:inherit}
+:focus-visible{outline:3px solid var(--route); outline-offset:3px; border-radius:8px}
+
+/* ---------- hero ---------- */
+.hero{
+  position:relative; min-height:100svh; display:grid; grid-template-rows:auto 1fr auto;
+  padding:20px clamp(16px,4vw,48px) clamp(16px,3vw,32px); overflow:hidden; isolation:isolate;
+  background:
+    radial-gradient(60% 55% at 70% 48%, #1c6d49 0%, rgba(28,109,73,0) 70%),
+    linear-gradient(180deg,#0a3a27 0%,var(--deep) 100%);
+}
+/* faint street grid, like a map under the building */
+.hero::before{
+  content:""; position:absolute; inset:0; z-index:-1; opacity:.5;
+  background:
+    repeating-linear-gradient(90deg, rgba(156,201,176,.07) 0 1px, transparent 1px 72px),
+    repeating-linear-gradient(0deg,  rgba(156,201,176,.07) 0 1px, transparent 1px 72px);
+  mask-image:radial-gradient(70% 70% at 70% 45%, #000, transparent);
+}
+
+/* ---------- nav ---------- */
+.nav{
+  width:100%; max-width:1180px; margin:0 auto; display:flex; align-items:center; justify-content:space-between;
+  gap:16px; padding:10px 12px 10px 18px; border-radius:999px;
+  background:rgba(228,243,232,.08); border:1px solid rgba(228,243,232,.16);
+  backdrop-filter:blur(14px); -webkit-backdrop-filter:blur(14px);
+}
+.brand{display:flex; align-items:center; gap:10px; text-decoration:none; font-family:var(--display); font-weight:800; font-size:1.15rem; letter-spacing:-.01em}
+.brand svg{width:28px; height:28px}
+.links{display:flex; gap:6px; list-style:none; margin:0; padding:0}
+.links a{display:block; padding:9px 16px; border-radius:999px; text-decoration:none; font-weight:500; font-size:.95rem; color:var(--mist); transition:background .2s,color .2s}
+.links a:hover,.links a[aria-current]{background:rgba(228,243,232,.12); color:var(--mint)}
+.btn{
+  display:inline-block; padding:12px 22px; border-radius:999px; font-weight:600; text-decoration:none; font-size:.95rem;
+  background:var(--route); color:#1b3a10; transition:transform .15s, box-shadow .2s;
+}
+.btn:hover{transform:translateY(-2px); box-shadow:0 8px 24px rgba(246,213,92,.3)}
+.btn.ghost{background:transparent; color:var(--mint); border:1.5px solid rgba(228,243,232,.35)}
+.btn.ghost:hover{box-shadow:none; background:rgba(228,243,232,.1)}
+
+/* ---------- hero main ---------- */
+.main{
+  width:100%; max-width:1180px; margin:0 auto; display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1.15fr);
+  align-items:center; gap:clamp(8px,3vw,40px); padding-block:clamp(8px,2vw,24px);
+}
+.copy h1{
+  font-family:var(--display); font-weight:800; font-size:clamp(2.4rem,5.4vw,4.5rem); line-height:.98;
+  letter-spacing:-.03em; margin:0 0 20px; max-width:11ch;
+}
+.copy p{font-size:clamp(1rem,1.4vw,1.15rem); line-height:1.6; color:var(--mist); max-width:46ch; margin:0 0 28px}
+.cta{display:flex; flex-wrap:wrap; gap:12px}
+
+/* ---------- 3D stage ---------- */
+.stage{position:relative; height:clamp(340px,44vw,520px); perspective:1500px}
+.float,.tilt,.spin,.world{position:absolute; left:50%; top:60%; width:0; height:0; transform-style:preserve-3d}
+.tilt,.spin,.world{left:0; top:0}
+.float{scale:var(--k,1.12); animation:bob 6s ease-in-out infinite}
+.tilt{transform:rotateX(-27deg)}
+.spin{animation:spin 48s linear infinite}
+@keyframes spin{to{transform:rotateY(360deg)}}
+@keyframes bob{50%{translate:0 -14px}}
+.shadow{
+  position:absolute; left:50%; top:86%; width:60%; height:36px; translate:-50% 0; border-radius:50%;
+  background:radial-gradient(closest-side, rgba(0,0,0,.45), transparent); filter:blur(6px);
+  animation:shade 6s ease-in-out infinite;
+}
+@keyframes shade{50%{transform:scale(.85); opacity:.7}}
+
+/* 3D primitives (built in JS) */
+.b{position:absolute; left:0; top:0; transform-style:preserve-3d}
+.b i,.pl{
+  position:absolute; --w:linear-gradient(transparent,transparent);
+  background:linear-gradient(rgba(0,0,0,var(--s,0)),rgba(0,0,0,var(--s,0))), var(--w), var(--c);
+}
+.pl{backface-visibility:visible}
+.b i.glass{--w:
+  repeating-linear-gradient(90deg, rgba(239,233,214,.95) 0 3px, transparent 3px 24px),
+  repeating-linear-gradient(0deg, transparent 0 9px, rgba(32,104,88,.7) 9px 17px)}
+.b i.fw{--w:
+  repeating-linear-gradient(90deg,#f4f2ea 0 5px,#2d5a47 5px 17px,#f4f2ea 17px 24px) 0 100%/100% 20px no-repeat,
+  repeating-linear-gradient(90deg,#f4f2ea 0 9px,transparent 9px 16px),
+  repeating-linear-gradient(0deg,transparent 0 6px,#35566a 6px 16px,transparent 16px 22px)}
+.b i.endb{--w:
+  linear-gradient(#f1eee2,#f1eee2) 12% 100%/30% 74% no-repeat,
+  linear-gradient(#f1eee2,#f1eee2) 58% 100%/30% 74% no-repeat,
+  repeating-linear-gradient(0deg,transparent 0 6px,rgba(18,64,46,.85) 6px 16px,transparent 16px 22px)}
+.route{background-repeat:repeat; box-shadow:0 0 14px rgba(246,213,92,.55); border-radius:4px}
+.route.v{background:repeating-linear-gradient(0deg,var(--route) 0 8px,#1c6a49 8px 16px); animation:dashv .9s linear infinite}
+.route.h{background:repeating-linear-gradient(90deg,var(--route) 0 8px,#1c6a49 8px 16px); animation:dashh .9s linear infinite}
+@keyframes dashv{to{background-position:0 -16px}}
+@keyframes dashh{to{background-position:16px 0}}
+.ring{border:2px solid var(--route); border-radius:50%; animation:ping 2.4s ease-out infinite}
+@keyframes ping{
+  0%{transform:translate3d(0,-2px,24px) rotateX(90deg) scale(.3); opacity:1}
+  100%{transform:translate3d(0,-2px,24px) rotateX(90deg) scale(1.7); opacity:0}}
+.clock{
+  position:absolute; width:24px; height:24px; left:-12px; top:-12px; border-radius:50%; backface-visibility:hidden;
+  background:linear-gradient(#0a3324,#0a3324) 50% 22%/2px 9px no-repeat, linear-gradient(#0a3324,#0a3324) 66% 50%/7px 2px no-repeat, #f6f1e1;
+  border:2px solid #2f8f5f;
+}
+
+/* ETA card, a flat overlay like a nav app */
+.eta{
+  position:absolute; right:2%; top:6%; z-index:3; display:flex; gap:12px; align-items:center;
+  padding:12px 16px 12px 12px; border-radius:16px; background:var(--paper); color:#12301f;
+  box-shadow:0 14px 40px rgba(0,0,0,.28);
+}
+.eta .dot{width:38px; height:38px; border-radius:12px; background:var(--route); display:grid; place-items:center}
+.eta strong{display:block; font-family:var(--display); font-size:1.05rem; line-height:1.1}
+.eta span{font-size:.82rem; color:#4c6a58}
+
+/* ---------- details panel ---------- */
+.details{
+  width:100%; max-width:1180px; margin:0 auto; display:grid; grid-template-columns:minmax(0,.8fr) minmax(0,2fr);
+  gap:clamp(20px,3vw,44px); padding:clamp(20px,2.6vw,32px); border-radius:28px;
+  background:rgba(228,243,232,.08); border:1px solid rgba(228,243,232,.16);
+  backdrop-filter:blur(16px); -webkit-backdrop-filter:blur(16px);
+}
+.about h2,.orgs h2{font-family:var(--display); font-weight:800; margin:0 0 8px; letter-spacing:-.02em}
+.about h2{font-size:1.7rem}
+.orgs h2{font-size:1.15rem; color:var(--mist); font-weight:500}
+.about p{margin:0 0 16px; color:var(--mist); line-height:1.55; font-size:.98rem}
+.about a{font-weight:600; text-underline-offset:4px}
+.grid{
+  list-style:none; margin:14px -6px 0; padding:4px 6px 12px; display:flex; gap:14px;
+  overflow-x:auto; scroll-snap-type:x mandatory; scrollbar-width:thin; scrollbar-color:rgba(228,243,232,.3) transparent;
+}
+.grid li{
+  flex:0 0 clamp(168px,17vw,196px); min-height:150px; scroll-snap-align:start; display:flex; flex-direction:column;
+  justify-content:space-between; padding:16px; border-radius:22px; background:var(--c); color:#10281b;
+  box-shadow:0 10px 24px rgba(0,0,0,.2); transition:transform .2s;
+}
+.grid li:hover{transform:translateY(-5px) rotate(-1deg)}
+.grid .mono{
+  width:44px; height:44px; border-radius:14px; display:grid; place-items:center; background:rgba(16,40,27,.12);
+  font-family:var(--display); font-weight:800; font-size:1.05rem; letter-spacing:-.02em;
+}
+.grid b{display:block; font-family:var(--display); font-weight:800; font-size:1.05rem; line-height:1.12; letter-spacing:-.01em}
+.grid span{display:block; margin-top:4px; font-size:.8rem; opacity:.75}
+
+@media (max-width:900px){
+  .main{grid-template-columns:1fr}
+  .copy{padding-top:12px}
+  .stage{--k:.8; order:-1; height:360px}
+  .details{grid-template-columns:1fr}
+  .links{display:none}
+  .eta{right:0; top:0}
+}
+@media (max-width:480px){ .stage{--k:.62; height:320px} .nav{padding-left:14px} .btn{padding:11px 18px} }
+@media (prefers-reduced-motion:reduce){ .spin,.float,.shadow,.route,.ring{animation:none} }
+
+
+/* ---------- sections below the hero ---------- */
+.page{background:linear-gradient(#08301f,#062417)}
+.sec{max-width:1180px; margin:0 auto; padding:clamp(60px,8vw,110px) clamp(16px,4vw,48px) 0; scroll-margin-top:12px}
+.sec h2{font-family:var(--display); font-weight:800; font-size:clamp(2rem,4vw,3rem); letter-spacing:-.03em; line-height:1; margin:0 0 12px}
+.sec>p{color:var(--mist); max-width:56ch; line-height:1.6; margin:0 0 34px}
+.ocards{list-style:none; margin:0; padding:0; display:grid; grid-template-columns:repeat(auto-fill,minmax(250px,1fr)); gap:16px}
+.ocard{display:flex; flex-direction:column; gap:14px; min-height:230px; padding:22px; border-radius:24px; background:var(--c); color:#10281b; transition:transform .2s}
+.ocard:hover{transform:translateY(-5px)}
+.ocard .mono{width:48px; height:48px; border-radius:15px; display:grid; place-items:center; background:rgba(16,40,27,.12); font-family:var(--display); font-weight:800; font-size:1.1rem}
+.ocard h3{font-family:var(--display); font-weight:800; font-size:1.3rem; line-height:1.1; letter-spacing:-.01em; margin:0}
+.ocard p{margin:0; font-size:.93rem; line-height:1.5; opacity:.8; flex:1}
+.ocard a{font-weight:600; font-size:.92rem; text-underline-offset:4px}
+.contact{display:grid; grid-template-columns:minmax(0,.9fr) minmax(0,1.1fr); gap:clamp(20px,3vw,44px)}
+.cinfo,.cform{padding:clamp(22px,3vw,34px); border-radius:28px; background:rgba(228,243,232,.08); border:1px solid rgba(228,243,232,.16)}
+.cinfo dl{margin:0; display:grid; gap:20px}
+.cinfo dt{font-size:.85rem; color:var(--mist); margin-bottom:3px}
+.cinfo dd{margin:0; font-family:var(--display); font-weight:500; font-size:1.2rem; line-height:1.3}
+.cform{display:grid; gap:14px; align-content:start}
+.cform label{display:grid; gap:6px; font-size:.9rem; color:var(--mist); font-weight:500}
+.cform input,.cform textarea,.cform select{
+  width:100%; padding:13px 15px; border-radius:14px; border:1px solid rgba(228,243,232,.22); background:rgba(8,48,31,.6);
+  color:var(--mint); font:400 1rem var(--body)}
+.cform textarea{min-height:130px; resize:vertical}
+.cform select option{color:#12301f}
+.cform .btn{border:0; cursor:pointer; font-family:var(--body); font-size:1rem; justify-self:start}
+.sent{margin:0; font-weight:600; color:var(--route); min-height:1.4em}
+.foot{max-width:1180px; margin:clamp(60px,8vw,110px) auto 0; padding:26px clamp(16px,4vw,48px) 34px; border-top:1px solid rgba(228,243,232,.14);
+  display:flex; flex-wrap:wrap; gap:12px 28px; justify-content:space-between; color:var(--mist); font-size:.9rem}
+.foot a{text-underline-offset:4px}
+@media (max-width:900px){ .contact{grid-template-columns:1fr} }
+</style>
+</head>
+<body>
+
+<header class="hero" id="home">
+  <!-- NAV -->
+  <nav class="nav" aria-label="Main">
+    <a class="brand" href="#home">
+      <svg viewBox="0 0 32 32" aria-hidden="true"><path d="M16 2C9.9 2 5 6.8 5 12.8 5 20.6 16 30 16 30s11-9.4 11-17.2C27 6.8 22.1 2 16 2Z" fill="#f6d55c"/><circle cx="16" cy="12.5" r="4.4" fill="#08301f"/></svg>
+      GC Wayfinder
+    </a>
+    <ul class="links">
+      <li><a href="#home" aria-current="page">Home</a></li>
+      <li><a href="#about">About</a></li>
+      <li><a href="#organizations">Organizations</a></li>
+      <li><a href="#contact">Contact</a></li>
+    </ul>
+    <a class="btn" href="map.html">Open the map</a>
+  </nav>
+
+  <!-- HERO -->
+  <div class="main">
+    <div class="copy">
+      <h1>Find your room before the bell rings.</h1>
+      <p>Live directions around the Gordon College campus: classrooms, offices, org halls, and the quickest walk between them.</p>
+      <div class="cta">
+        <a class="btn" href="map.html">Open the map</a>
+        <a class="btn ghost" href="#organizations">See organizations</a>
+      </div>
+    </div>
+
+    <div class="stage" aria-label="Rotating 3D model of the campus">
+      <div class="eta" role="img" aria-label="Sample route: Computer Lab 2, 3 minute walk">
+        <div class="dot"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#1b3a10" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></div>
+        <div><strong>Computer Lab 2</strong><span>3 min walk · 240 m</span></div>
+      </div>
+      <div class="shadow"></div>
+      <div class="float"><div class="tilt"><div class="spin"><div class="world" id="world"></div></div></div></div>
+    </div>
+  </div>
+
+  <!-- COLLEGE DETAILS -->
+  <section class="details" id="about" aria-label="College details">
+    <div class="about">
+      <h2>Gordon College</h2>
+      <p>Every building, office and org hall on one map. Pick where you’re headed and follow the route.</p>
+      <a href="#contact">Contact us</a>
+    </div>
+    <div class="orgs" id="orgs-preview">
+      <h2>Student organizations</h2>
+      <!-- SAMPLE ORGS: replace with your real list -->
+      <ul class="grid">
+        <li style="--c:#f6d55c"><div class="mono" aria-hidden="true">SC</div><div><b>Supreme Student Council</b><span>Student government</span></div></li>
+        <li style="--c:#8fe0ae"><div class="mono" aria-hidden="true">CS</div><div><b>Computer Studies Society</b><span>Computer studies</span></div></li>
+        <li style="--c:#f2a483"><div class="mono" aria-hidden="true">HT</div><div><b>Hospitality &amp; Tourism Society</b><span>Hospitality, tourism</span></div></li>
+        <li style="--c:#9cc4f5"><div class="mono" aria-hidden="true">TE</div><div><b>Teacher Education Society</b><span>Education</span></div></li>
+        <li style="--c:#d0b0f2"><div class="mono" aria-hidden="true">BA</div><div><b>Business Admin Society</b><span>Business</span></div></li>
+        <li style="--c:#f5b3cf"><div class="mono" aria-hidden="true">CP</div><div><b>Campus Press</b><span>Student publication</span></div></li>
+        <li style="--c:#f3e9a8"><div class="mono" aria-hidden="true">PA</div><div><b>Performing Arts Guild</b><span>Music, dance, theater</span></div></li>
+        <li style="--c:#f08a8a"><div class="mono" aria-hidden="true">RC</div><div><b>Red Cross Youth</b><span>Community service</span></div></li>
+      </ul>
+    </div>
+  </section>
+</header>
+
+<div class="page">
+  <section class="sec" id="organizations" aria-labelledby="orgH">
+    <h2 id="orgH">Student organizations</h2>
+    <p>Find who runs what on campus, and where to reach them.</p>
+    <!-- SAMPLE ORGS: replace with your real list -->
+    <ul class="ocards">
+      <li class="ocard" style="--c:#f6d55c"><div class="mono" aria-hidden="true">SC</div><h3>Supreme Student Council</h3><p>The student government. Speaks for students and runs college-wide events.</p><a href="#contact">Contact</a></li>
+      <li class="ocard" style="--c:#8fe0ae"><div class="mono" aria-hidden="true">CS</div><h3>Computer Studies Society</h3><p>Workshops, hackathons and tech talks for computer studies students.</p><a href="#contact">Contact</a></li>
+      <li class="ocard" style="--c:#f2a483"><div class="mono" aria-hidden="true">HT</div><h3>Hospitality &amp; Tourism Society</h3><p>Hands-on events and industry visits for hospitality and tourism students.</p><a href="#contact">Contact</a></li>
+      <li class="ocard" style="--c:#9cc4f5"><div class="mono" aria-hidden="true">TE</div><h3>Teacher Education Society</h3><p>Learning sessions and community teaching programs for future educators.</p><a href="#contact">Contact</a></li>
+      <li class="ocard" style="--c:#d0b0f2"><div class="mono" aria-hidden="true">BA</div><h3>Business Admin Society</h3><p>Seminars, case contests and entrepreneurship activities.</p><a href="#contact">Contact</a></li>
+      <li class="ocard" style="--c:#f5b3cf"><div class="mono" aria-hidden="true">CP</div><h3>Campus Press</h3><p>The student publication: news, features and photojournalism.</p><a href="#contact">Contact</a></li>
+      <li class="ocard" style="--c:#f3e9a8"><div class="mono" aria-hidden="true">PA</div><h3>Performing Arts Guild</h3><p>Music, dance and theater groups that perform at college events.</p><a href="#contact">Contact</a></li>
+      <li class="ocard" style="--c:#f08a8a"><div class="mono" aria-hidden="true">RC</div><h3>Red Cross Youth</h3><p>Volunteer first aid, blood drives and community service.</p><a href="#contact">Contact</a></li>
+    </ul>
+  </section>
+
+  <section class="sec" id="contact" aria-labelledby="conH">
+    <h2 id="conH">Contact</h2>
+    <p>Missing a room, wrong directions, or want your organization listed? Send us a note.</p>
+    <div class="contact">
+      <!-- SAMPLE CONTACT DETAILS: replace with your real ones -->
+      <div class="cinfo">
+        <dl>
+          <div><dt>Email</dt><dd>wayfinder@example.com</dd></div>
+          <div><dt>Phone</dt><dd>(000) 000-0000</dd></div>
+          <div><dt>Office</dt><dd>Main building, Room 000</dd></div>
+          <div><dt>Office hours</dt><dd>Monday to Friday, 8:00 AM to 5:00 PM</dd></div>
+        </dl>
+      </div>
+      <form class="cform" id="cform">
+        <label>Your name<input name="name" required autocomplete="name"></label>
+        <label>Email<input name="email" type="email" required autocomplete="email"></label>
+        <label>About
+          <select name="topic">
+            <option>Wrong or missing location</option>
+            <option>List my organization</option>
+            <option>Report a problem</option>
+            <option>Something else</option>
+          </select>
+        </label>
+        <label>Message<textarea name="msg" required></textarea></label>
+        <button class="btn" type="submit">Send message</button>
+        <p class="sent" id="sent" role="status"></p>
+      </form>
+    </div>
+  </section>
+
+  <footer class="foot">
+    <span>GC Wayfinder · Gordon College</span>
+    <a href="#home">Back to top</a>
+  </footer>
+</div>
+
+
+
+<script>
+(function(){
+  const world = document.getElementById('world');
+  let html = '';
+
+  // flat horizontal plane on the ground (x,z = centre, y = height above ground)
+  function plane(x,z,w,d,c,y,extra,cls){
+    html += `<div class="pl ${cls||''}" style="width:${w}px;height:${d}px;left:${-w/2}px;top:${-d/2}px;--c:${c};transform:translate3d(${x}px,${-(y||0)}px,${z}px) rotateX(90deg);${extra||''}"></div>`;
+  }
+  // box centred on (x,z), base at height y
+  function box(x,z,w,d,h,c,y,win){
+    y = y||0; const g = win===true ? 'glass' : (win||'');
+    const f = (cls,sh,wd,tf) => `<i class="${cls}" style="width:${wd}px;height:${h}px;left:${-wd/2}px;top:${-h}px;--c:${c};--s:${sh};transform:${tf}"></i>`;
+    html += `<div class="b" style="transform:translate3d(${x}px,${-y}px,${z}px)">`
+      + f(g,.08,w,`translateZ(${d/2}px)`)
+      + f(g,.32,w,`rotateY(180deg) translateZ(${d/2}px)`)
+      + f(g,.18,d,`rotateY(90deg) translateZ(${w/2}px)`)
+      + f(g,.34,d,`rotateY(-90deg) translateZ(${w/2}px)`)
+      + `<i style="width:${w}px;height:${d}px;left:${-w/2}px;top:${-d/2}px;--c:${c};--s:0;transform:translateY(${-h}px) rotateX(90deg)"></i></div>`;
+  }
+
+  // island: stacked discs give the platform some thickness
+  const D = 450;
+  for(let i=5;i>=1;i--) plane(0,10,D,D,'#0b3a27',-i*3,'border-radius:50%');
+  plane(0,10,D,D,'#2c8a5a',0,'border-radius:50%');
+  plane(0,10,D-26,D-26,'#35a06a',.4,'border-radius:50%');
+  plane(0,96,300,170,'#3aa66f',.6,'border-radius:20px'); // front lawn
+
+  // Gordon College building, modelled on the photo: one long five-storey white block with small windows,
+  // green vertical fins, two long green balcony ledges, an open ground floor, and a taller green end block
+  box(0,-20,280,56,110,'#f4f2ea',0,'fw');
+  box(0,-20,288,62,4,'#d9d4c2',110);                                // roof
+  box(0,12,284,9,5,'#1f9a63',20); box(0,12,284,9,5,'#1f9a63',42);   // balcony ledges
+  [-100,-44,12,68].forEach(x=>box(x,10,8,6,110,'#1f9a63',0));       // fins
+  box(143,-20,9,60,110,'#1f9a63',0);                                // right end fin
+  box(-166,-18,52,68,124,'#1f9a63',0,'endb');                       // green end block
+  box(-166,-18,58,74,4,'#157a4c',124);
+  box(0,9,22,3,26,'#0f4a33',0);                                     // entrance door
+  box(-176,42,76,34,3,'#1f9a63',30);                                // covered walkway
+  [[-212,28],[-140,28],[-212,56],[-140,56]].forEach(p=>box(p[0],p[1],3,3,30,'#157a4c',0));
+
+  // trees (trunk + two crown cubes)
+  [[-120,62],[120,62],[-60,150],[70,160],[150,128],[-170,120],[190,-60],[92,96],[-112,102],[-80,-110],[80,-112]].forEach(t=>{
+    box(t[0],t[1],4,4,10,'#7a5a3a',0);
+    box(t[0],t[1],18,18,16,'#2f9a62',10);
+    box(t[0],t[1],10,10,10,'#46b97b',26);
+  });
+
+  // route: gate -> front lawn -> entrance door
+  plane(-90,150,12,92,'#1c6a49',1.5,'','route v');
+  plane(-45,104,102,12,'#1c6a49',1.5,'','route h');
+  plane(0,56,12,96,'#1c6a49',1.5,'','route v');
+  // destination pin
+  box(0,24,3,3,30,'#f6d55c',0);
+  box(0,24,13,13,13,'#f6d55c',30);
+  plane(0,24,60,60,'transparent',2,'','ring');
+
+  world.innerHTML = html;
+})();
+</script>
+
+<script>
+/* Front-end only: connect this to your backend or an email service to receive messages. */
+document.getElementById('cform').addEventListener('submit',function(e){
+  e.preventDefault(); document.getElementById('sent').textContent='Message sent. Thank you!'; this.reset();
+});
+</script>
+</body>
+</html>
