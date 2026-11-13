@@ -7,8 +7,9 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,800&family=Figtree:wght@400;500;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="lib/pannellum.css">
-<script src="lib/pannellum.js"></script>
+<!-- 360 viewer: uses lib/pannellum.* if you have it, otherwise loads it online -->
+<link rel="stylesheet" href="lib/pannellum.css" onerror="this.onerror=null;this.href='https://cdnjs.cloudflare.com/ajax/libs/pannellum/2.5.6/pannellum.css'">
+<script src="lib/pannellum.js" onerror="document.write('<script src=&quot;https://cdnjs.cloudflare.com/ajax/libs/pannellum/2.5.6/pannellum.js&quot;><\/script>')"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
 <script type="module" src="https://ajax.googleapis.com/ajax/libs/model-viewer/3.5.0/model-viewer.min.js"></script>
@@ -69,6 +70,9 @@ body{margin:0; background:var(--deep); color:var(--mint); font-family:var(--body
 .ar-note{top:118px}
 #start{position:absolute; inset:0; z-index:5; display:grid; place-items:center; padding:20px; background:linear-gradient(rgba(8,48,31,.82),rgba(8,48,31,.94)); backdrop-filter:blur(8px)}
 #start.off{display:none}
+.ar-top,#vsw,#sub{z-index:7}
+#start .box{margin-top:90px}
+#bugToast{position:fixed; left:12px; right:12px; bottom:12px; z-index:999; display:none; padding:10px 14px; border-radius:14px; background:#7a1d16; color:#fff; font:500 .8rem var(--body)}
 #start .box{max-width:360px; text-align:center}
 #start h1{font-family:var(--display); font-weight:800; font-size:2rem; letter-spacing:-.02em; margin:0 0 10px}
 #start p{color:var(--mist); line-height:1.55; margin:0 0 22px}
@@ -133,6 +137,19 @@ body.v2d #fl{display:flex}
 .arr{font-size:8px}
 .hs{display:block; border:0; background:var(--route); color:#1b3a10; font:600 .8rem var(--body); padding:6px 11px; border-radius:999px; box-shadow:0 4px 14px rgba(0,0,0,.45); white-space:nowrap; pointer-events:none}
 .hs.me{background:#fff; color:#12301f}
+.hs.ph{pointer-events:auto; cursor:pointer; background:#fff; color:#12301f}
+#photoDock{position:absolute; z-index:4; left:14px; right:14px; max-width:520px; margin:0 auto; top:max(170px,calc(env(safe-area-inset-top) + 162px)); height:min(36vh,320px); border-radius:20px; overflow:hidden; display:none; background:#000; box-shadow:0 10px 30px rgba(0,0,0,.5); border:2px solid rgba(255,255,255,.85)}
+#photoDock.on{display:block}
+#dockEl{position:absolute; inset:0}
+#photoDock .dk-top{position:absolute; z-index:2; top:8px; left:8px; right:8px; display:flex; gap:8px; align-items:center; pointer-events:none}
+#photoDock .dk-top span{flex:1; background:rgba(8,48,31,.85); padding:7px 12px; border-radius:999px; font:600 .8rem var(--body); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; width:0}
+#photoDock .dk-top button{pointer-events:auto; border:0; cursor:pointer; border-radius:999px; background:rgba(8,48,31,.85); color:#fff; font:600 .8rem var(--body); padding:7px 12px}
+#photoView{position:absolute; inset:0; z-index:30; display:none; background:#000}
+#photoView.on{display:block}
+#photoEl{position:absolute; inset:0}
+#photoView .pv-top{position:absolute; z-index:2; top:max(14px,env(safe-area-inset-top)); left:14px; right:14px; display:flex; justify-content:space-between; align-items:center; gap:10px; pointer-events:none}
+#photoView .pv-top strong{background:rgba(8,48,31,.85); padding:10px 16px; border-radius:999px; font:600 .9rem var(--body)}
+#photoView .pv-top .btn{pointer-events:auto; border:0; cursor:pointer}
 .mcard{display:none; position:absolute; left:14px; right:14px; bottom:max(14px,env(safe-area-inset-bottom)); max-width:520px; margin:0 auto; z-index:3;
   flex-wrap:wrap; align-items:center; gap:10px; padding:14px 16px; border-radius:22px; background:var(--paper); color:#12301f; box-shadow:0 18px 44px rgba(0,0,0,.4)}
 body.model .mcard:not(.tcard){display:flex}
@@ -193,7 +210,7 @@ body.space .ar-card,body.space .edge,body.space .ar-world,body.space #arCam,body
   <div id="tourWrap"><div id="tourEl"></div></div>
   <div id="spWrap"><p id="spMsg"></p></div>
   <div id="modelWrap">
-    <model-viewer id="mv" src="test.glb" alt="3D model of the campus" loading="eager" ar ar-modes="webxr scene-viewer quick-look" camera-controls auto-rotate shadow-intensity="1" touch-action="pan-y" min-camera-orbit="auto auto 5%" max-camera-orbit="auto auto 200%">
+    <model-viewer id="mv" src="campus.glb" alt="3D model of the campus" loading="eager" ar ar-modes="webxr scene-viewer quick-look" camera-controls auto-rotate shadow-intensity="1" touch-action="pan-y" min-camera-orbit="auto auto 5%" max-camera-orbit="auto auto 200%">
       <button slot="hotspot-room" class="hs" data-position="0m 0m 0m" data-normal="0m 1m 0m" style="display:none"></button>
       <button slot="hotspot-me" class="hs me" data-position="0m 0m 0m" data-normal="0m 1m 0m" style="display:none"></button>
     </model-viewer>
@@ -213,16 +230,16 @@ body.space .ar-card,body.space .edge,body.space .ar-world,body.space #arCam,body
   </div>
   <div class="mcard" id="mcard">
     <div><strong id="mName">Pick a room</strong><span id="mMeta">Tap a room on the 2D map</span></div>
+    <button class="btn" id="mPhoto" style="display:none">360° photo</button>
     <button class="btn" id="mPick" aria-pressed="false">Place on model</button>
     <button class="btn" id="mCopy">Copy spots</button>
   </div>
   <div class="scard" id="scard">
     <div><strong id="sName">3D space</strong><span id="sMeta">Loading the model…</span></div>
+    <button class="btn" id="sPhoto" style="display:none">360° photo</button>
     <button class="btn" id="sGyro" aria-pressed="false">Look with phone</button>
     <button class="btn" id="sCenter">Recenter</button>
     <button class="btn" id="sSave">Save spot</button>
-    <button class="btn" id="sBack">◀ Back</button>
-    <button class="btn" id="sFwd">Forward ▶</button>
     <button class="btn" id="sCopy">Copy spots</button>
   </div>
   <div class="mcard tcard" id="tcard">
@@ -251,6 +268,8 @@ body.space .ar-card,body.space .edge,body.space .ar-world,body.space #arCam,body
     <div><strong id="arHint">Head straight ahead</strong><span id="arMeta">240 m · 3 min walk</span></div>
     <a class="btn" href="index.html">End route</a>
   </div>
+  <div id="photoDock"><div id="dockEl"></div><div class="dk-top"><span id="dkName"></span><button id="dkBig" type="button">Full screen</button><button id="dkX" type="button" aria-label="Hide photo">✕</button></div></div>
+  <div id="photoView"><div id="photoEl"></div><div class="pv-top"><strong id="pvName">360° photo</strong><button class="btn" id="pvClose">Close</button></div></div>
   <div id="start">
     <div class="box">
       <h1>Ready to walk?</h1>
@@ -261,7 +280,9 @@ body.space .ar-card,body.space .edge,body.space .ar-world,body.space #arCam,body
     </div>
   </div>
 </div>
+<div id="bugToast"></div>
 <script>
+window.addEventListener('error',e=>{ const t=document.getElementById('bugToast'); if(t){ t.textContent='Something went wrong: '+(e.message||'unknown error'); t.style.display='block'; setTimeout(()=>{t.style.display='none'},9000) } });
 /* Camera needs https or localhost. The floors, rooms and coordinates below are SAMPLES: replace with your real campus plan. */
 (function(){
   const $=id=>document.getElementById(id), clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
@@ -269,6 +290,7 @@ body.space .ar-card,body.space .edge,body.space .ar-world,body.space #arCam,body
         start=$('start'), svg=$('mapSvg'), chips=$('nearby');
   const W=600, H=540, M=.55;            // map size and metres per map unit
   const NORTH=0;                        // compass bearing (degrees) of the map's "up". SAMPLE: set to your campus orientation
+  let anchor=null, gpsGood=false, wl=null;   // GPS anchor: the first good fix is pinned to where the dot is, then GPS movement moves the dot
   const GEO={lat:null,lng:null};        // optional: real lat/lng of the map centre (300,270). When set, GPS moves the dot; otherwise steps do
   const STEP=.7/M, VMIN=90, VMAX=900;   // step length in map units, zoom limits (viewBox width)
   const FLOORS=['1F','2F','3F','4F','5F'], FLOOR_NAMES=['1st floor','2nd floor','3rd floor','4th floor','5th floor'];
@@ -366,7 +388,7 @@ body.space .ar-card,body.space .edge,body.space .ar-world,body.space #arCam,body
   function zoomBy(f){vw=clamp(vw*f,VMIN,VMAX); fit(); labels()}
   function setFollow(v){follow=v; $('zFollow').setAttribute('aria-pressed',v); fit()}
 
-  function update(){
+  function update(){ refreshPhotoBtns();
     const rt=route(), dm=Math.round(rt.d*M), b=(Math.atan2(rt.tx-me.x,-(rt.ty-me.y))*180/Math.PI+360)%360;
     // floors
     FLOORS.forEach((_,f)=>{$('fg-'+f).style.display=f===vf?'':'none'});
@@ -419,7 +441,7 @@ body.space .ar-card,body.space .edge,body.space .ar-world,body.space #arCam,body
     if(ptrs.size===0 && moved<=6 && e.type==='pointerup'){
       const p=svg.createSVGPoint(); p.x=e.clientX; p.y=e.clientY; const q=p.matrixTransform(svg.getScreenCTM().inverse());
       if(placing){
-        me={x:clamp(q.x,6,W-6),y:clamp(q.y,6,H-6)}; mf=vf; placing=false; $('zSet').setAttribute('aria-pressed',false);
+        me={x:clamp(q.x,6,W-6),y:clamp(q.y,6,H-6)}; anchor=null; mf=vf; placing=false; $('zSet').setAttribute('aria-pressed',false);
         say('Spot set on '+FLOORS[mf]+'. Walk and the dot follows',2500); setFollow(true); update();
       } else {
         const hit=rooms.find(r=>r.kind&&r.f===vf&&q.x>=r.x-6&&q.x<=r.x+r.w+6&&q.y>=r.y-6&&q.y<=r.y+r.h+6);
@@ -448,29 +470,45 @@ body.space .ar-card,body.space .edge,body.space .ar-world,body.space #arCam,body
     if(!above && d>1.4 && t-lastStep>330){above=true; lastStep=t; step()} else if(d<.5) above=false;
   }
   function step(){
-    if(heading==null||GEO.lat!=null) return;
+    if(heading==null||GEO.lat!=null||gpsGood) return;   // steps only when GPS is not doing the job
     const h=(heading-NORTH)*Math.PI/180;
     me={x:clamp(me.x+Math.sin(h)*STEP,6,W-6),y:clamp(me.y-Math.cos(h)*STEP,6,H-6)}; update();
   }
   function onGPS(p){
-    const R=6371000, la=GEO.lat*Math.PI/180, east=(p.coords.longitude-GEO.lng)*Math.PI/180*R*Math.cos(la), north=(p.coords.latitude-GEO.lat)*Math.PI/180*R;
+    const c=p.coords; $('acc').setAttribute('r',c.accuracy>8?Math.min(c.accuracy,60)/M:0);
+    if(GEO.lat!=null) anchor={lat:GEO.lat,lng:GEO.lng,x:300,y:270};          // exact campus coordinates known
+    else if(c.accuracy>25){ if(gpsGood){ gpsGood=false; anchor=null; say('GPS is weak here, steps take over',3000) } return }
+    else if(!anchor){ anchor={lat:c.latitude,lng:c.longitude,x:me.x,y:me.y}; gpsGood=true; say('Tracking you. Walk and the dot follows',2500); return }
+    gpsGood=true;
+    const R=6371000, la=anchor.lat*Math.PI/180, east=(c.longitude-anchor.lng)*Math.PI/180*R*Math.cos(la), north=(c.latitude-anchor.lat)*Math.PI/180*R;
     const d=Math.hypot(east,north), phi=Math.atan2(east,north)-NORTH*Math.PI/180;
-    me={x:clamp(300+d*Math.sin(phi)/M,6,W-6),y:clamp(270-d*Math.cos(phi)/M,6,H-6)};
-    $('acc').setAttribute('r',p.coords.accuracy>8?p.coords.accuracy/M:0); update();
+    const tx=clamp(anchor.x+d*Math.sin(phi)/M,6,W-6), ty=clamp(anchor.y-d*Math.cos(phi)/M,6,H-6);
+    glideTo={x:tx,y:ty}; if(!gliding){ gliding=true; glide() }
+  }
+  let glideTo=null, gliding=false;
+  function glide(){                                        // ease the dot to each new GPS fix instead of jumping
+    if(!glideTo||!walking){ gliding=false; return }
+    const dx=glideTo.x-me.x, dy=glideTo.y-me.y;
+    if(Math.hypot(dx,dy)<.3){ me={x:glideTo.x,y:glideTo.y}; glideTo=null; gliding=false; update(); return }
+    me={x:me.x+dx*.35,y:me.y+dy*.35}; update(); setTimeout(glide,90);
   }
   async function toggleWalk(){
     if(walking){ walking=false; removeEventListener('devicemotion',onMotion); if(gps!=null){navigator.geolocation.clearWatch(gps); gps=null; $('acc').setAttribute('r',0)}
+      anchor=null; gpsGood=false; if(wl){ try{wl.release()}catch(_){} wl=null }
       $('zWalk').setAttribute('aria-pressed',false); say('Walking mode off',2000); return }
+    let motionOK=true;                                   // compass + step sensors; GPS below works without them
     try{
       const rq=[]; if(window.DeviceOrientationEvent&&DeviceOrientationEvent.requestPermission) rq.push(DeviceOrientationEvent.requestPermission());
       if(window.DeviceMotionEvent&&DeviceMotionEvent.requestPermission) rq.push(DeviceMotionEvent.requestPermission());
-      const res=await Promise.all(rq); if(res.some(r=>r!=='granted')) throw 0;
-    }catch(e){ say('Motion access is blocked. Allow it in browser settings',4000); return }
-    walking=true; sensed=false; $('zWalk').setAttribute('aria-pressed',true); listenOri(); vf=mf; setFollow(true);
-    if(GEO.lat!=null && navigator.geolocation){ gps=navigator.geolocation.watchPosition(onGPS,()=>say('GPS unavailable',3000),{enableHighAccuracy:true,maximumAge:1000}) }
-    else addEventListener('devicemotion',onMotion);
+      const res=await Promise.all(rq.map(q=>q.catch(()=>'denied'))); motionOK=!res.some(r=>r!=='granted');
+    }catch(e){ motionOK=false }
+    if(!motionOK&&!navigator.geolocation){ say('Motion access is blocked. Allow it in browser settings',4000); return }
+    walking=true; sensed=false; $('zWalk').setAttribute('aria-pressed',true); if(motionOK) listenOri(); vf=mf; setFollow(true);
+    if(navigator.geolocation) gps=navigator.geolocation.watchPosition(onGPS,()=>say('GPS unavailable, using steps',3000),{enableHighAccuracy:true,maximumAge:1000,timeout:20000});
+    if(motionOK) addEventListener('devicemotion',onMotion);
+    try{ if(navigator.wakeLock) navigator.wakeLock.request('screen').then(l=>{wl=l}).catch(()=>{}) }catch(_){}   // keep the screen on while walking
     say('Walking mode on: the dot moves as you walk',3000);
-    setTimeout(()=>{ if(walking&&!sensed&&gps==null&&heading==null) say('No motion sensors here. Use the arrow keys',5000) },2500);
+    setTimeout(()=>{ if(walking&&motionOK&&!sensed&&!gpsGood&&heading==null) say('No motion sensors here. Use the arrow keys',5000) },2500);
   }
   $('zWalk').onclick=toggleWalk;
   addEventListener('keydown',e=>{
@@ -481,12 +519,13 @@ body.space .ar-card,body.space .edge,body.space .ar-world,body.space #arCam,body
 
   /* ---- views ---- */
   function render(){
+    closePhoto();
     if(sp&&sp.on&&!(view==='3d'&&sub==='space')) spaceLeave();
     const cams=view==='3d'&&sub==='cam';
     document.body.classList.toggle('v2d',view==='2d'); document.body.classList.toggle('model',view==='3d'&&sub==='model'); document.body.classList.toggle('tour',view==='3d'&&sub==='tour'); document.body.classList.toggle('space',view==='3d'&&sub==='space'); $('mSpace').setAttribute('aria-selected',sub==='space'); if(view==='3d'&&sub==='space') spaceEnter(); $('mTour').setAttribute('aria-selected',sub==='tour');
     $('v2').setAttribute('aria-selected',view==='2d'); $('v3').setAttribute('aria-selected',view==='3d');
     $('mCam').setAttribute('aria-selected',sub==='cam'); $('mMod').setAttribute('aria-selected',sub==='model');
-    start.classList.toggle('off',!(cams&&!stream&&!asked)); fit();
+    start.classList.toggle('off',!(cams&&!stream&&!asked)); fit(); refreshPhotoBtns();
     if(view==='3d'&&sub==='model') requestAnimationFrame(()=>flyTo(cur));
     if(view==='3d'&&sub==='tour'){ const r=pendingTour; pendingTour=null; requestAnimationFrame(()=>tourEnter(r)) }
   }
@@ -496,19 +535,20 @@ body.space .ar-card,body.space .edge,body.space .ar-world,body.space #arCam,body
     if(h==null) return;
     heading = heading==null ? h : (heading+((h-heading+540)%360-180)*.25+360)%360; update();
   }
+  const within=(pr,ms)=>Promise.race([pr,new Promise((_,no)=>setTimeout(()=>no(new Error('timeout')),ms))]);
   async function startCam(){
     asked=true; view='3d'; sub='cam'; render();
     try{
-      if(window.DeviceOrientationEvent&&DeviceOrientationEvent.requestPermission){await DeviceOrientationEvent.requestPermission()}
+      if(window.DeviceOrientationEvent&&DeviceOrientationEvent.requestPermission){ await within(DeviceOrientationEvent.requestPermission(),6000) }
       listenOri();
     }catch(e){}
     try{
-      stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:'environment'}},audio:false});
+      stream=await within(navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:'environment'}},audio:false}),10000);
       cam.srcObject=stream; cam.style.display='block'; note.classList.remove('show');
     }catch(e){cam.style.display='none'; note.classList.add('show')}
   }
   $('v2').onclick=()=>{view='2d'; render()};
-  $('v3').onclick=()=>{view='3d'; render()};
+  $('v3').onclick=()=>{view='3d'; if(sub==='tour') pendingTour=cur; render()};   // 3D opens the selected room in the photo walk-through
   $('mCam').onclick=()=>{sub='cam'; render()};
   $('mMod').onclick=()=>{sub='model'; render()};
   $('mTour').onclick=()=>{sub='tour'; render()};
@@ -543,7 +583,7 @@ body.space .ar-card,body.space .edge,body.space .ar-world,body.space #arCam,body
   }
   let pendingTour=null;
   function openIn3D(r){ cur=r; sel.value=r.id; view='3d'; sub='tour'; pendingTour=r; render(); update() }
-  mv.addEventListener('load',()=>{ if(pending){ const r=pending; pending=null; flyTo(r) } });
+  mv.addEventListener('load',()=>{ photoPins(); if(pending){ const r=pending; pending=null; flyTo(r) } });
   $('mPick').onclick=()=>{ pick=!pick; $('mPick').setAttribute('aria-pressed',pick); flyTo(cur) };
   mv.addEventListener('click',e=>{
     if(!pick) return; const h=mv.positionAndNormalFromPoint(e.clientX,e.clientY); if(!h) return;
@@ -557,6 +597,66 @@ body.space .ar-card,body.space .edge,body.space .ar-world,body.space #arCam,body
   /* ---- Walk-through, Street View style ----
      Each stop is an equirectangular 360 photo in /tour. The placeholder images were rendered from the room plan, so swap any of them
      for a real photo taken at the same spot: c<floor>-<stop>.jpg (hallways), o0-o2.jpg (outside), room-class/lab/office.jpg. */
+  /* Your own 360 photos (Raya 360 etc.): put the .jpg in /tour and list it here by room name, e.g.  'Computer Lab 2':'tour/computer-lab-2.jpg'
+     Rooms not listed keep the shared placeholder photo. */
+  const ROOM_PHOTOS={ };
+  /* Automatic: drop a 360 jpg in /tour named after the room and it is picked up with no editing.
+     Tried in order for "Computer Lab 2":  computer-lab-2.jpg, then computer-lab.jpg (shared by every Computer Lab), then the placeholder. */
+  const photoOf={}; let photosReady=null, photosDone=false, pv=null;
+  const photoFor=r=>r&&(ROOM_PHOTOS[r.n]||photoOf[r.n]);
+  function openPhoto(r){                                   // full-screen 360 photo, usable from the Model and 3D space tabs
+    const u=photoFor(r); if(!u) return;
+    $('pvName').textContent=r.n+' · 360° photo'; $('photoView').classList.add('on');
+    if(typeof pannellum==='undefined'){ $('pvName').textContent='The 360 viewer could not load. Check your internet and refresh'; return }
+    if(pv){ try{pv.destroy()}catch(_){} }
+    pv=pannellum.viewer('photoEl',{type:'equirectangular',panorama:u,autoLoad:true,showControls:false,hfov:100,minHfov:45,maxHfov:120,mouseZoom:true});
+  }
+  function closePhoto(){ $('photoView').classList.remove('on'); if(pv){ try{pv.destroy()}catch(_){} pv=null } }
+  /* Model tab: the selected room's 360 photo shows automatically in a panel above the model */
+  let dockV=null, dockRoom=null, dockOff=null;
+  function refreshDock(){
+    const want=view==='3d'&&sub==='model'&&photoFor(cur)&&dockOff!==cur.id&&typeof pannellum!=='undefined';
+    $('photoDock').classList.toggle('on',!!want);
+    if(!want){ if(dockV){ try{dockV.destroy()}catch(_){} dockV=null; dockRoom=null } return }
+    if(dockRoom===cur.id&&dockV) return;
+    if(dockV){ try{dockV.destroy()}catch(_){} }
+    dockRoom=cur.id; $('dkName').textContent=cur.n+' · 360° photo';
+    dockV=pannellum.viewer('dockEl',{type:'equirectangular',panorama:photoFor(cur),autoLoad:true,showControls:false,hfov:100,minHfov:45,maxHfov:120,mouseZoom:true});
+  }
+  $('dkX').onclick=()=>{ dockOff=cur.id; refreshDock() }; $('dkBig').onclick=()=>openPhoto(cur);
+  function refreshPhotoBtns(){ const on=!!photoFor(cur); $('mPhoto').style.display=on?'':'none'; $('sPhoto').style.display=on?'':'none'; refreshDock() }
+  $('pvClose').onclick=closePhoto; $('mPhoto').onclick=$('sPhoto').onclick=()=>openPhoto(cur);
+  function photoPins(){                                    // Model tab: a tappable photo pin at every room that has a 360 photo
+    if(!mv.loaded) return;
+    mv.querySelectorAll('.ph').forEach(e=>e.remove());
+    rooms.filter(r=>!r.kind&&photoFor(r)).forEach(r=>{ const p=spot(r), b=document.createElement('button');
+      b.className='hs ph'; b.slot='hotspot-ph-'+r.id; b.dataset.position=p.x+'m '+p.y+'m '+p.z+'m'; b.dataset.normal='0m 1m 0m'; b.textContent='📷 '+r.n;
+      b.onclick=e=>{ e.stopPropagation(); openPhoto(r) }; mv.appendChild(b) });
+  }
+  function spPins(){                                       // 3D space tab: the same pins floating in the model
+    if(!sp||!sp.loaded) return;
+    sp.pins.children.slice().forEach(o=>sp.pins.remove(o));
+    const b=sp.box, s=b.getSize(new THREE.Vector3());
+    rooms.filter(r=>!r.kind&&photoFor(r)).forEach(r=>{
+      const e=eyes[r.id]||EYES[r.id]; let p;
+      if(e) p=new THREE.Vector3(e[0],e[1],e[2]);
+      else { const rc=ctr(r); p=new THREE.Vector3(b.min.x+clamp((rc.x-BX[0])/(BX[1]-BX[0]),0,1)*s.x, b.min.y+s.y*clamp((r.f+.5)/FLOORS.length,0,1), b.min.z+clamp((rc.y-BY[0])/(BY[1]-BY[0]),0,1)*s.z) }
+      const cv=document.createElement('canvas'); cv.width=320; cv.height=96; const x=cv.getContext('2d');
+      x.fillStyle='#ffffff'; x.beginPath(); x.roundRect?x.roundRect(4,8,312,80,40):x.rect(4,8,312,80); x.fill();
+      x.fillStyle='#12301f'; x.font='600 34px sans-serif'; x.textAlign='center'; x.textBaseline='middle'; x.fillText('📷 '+r.n,160,50,290);
+      const sp2=new THREE.Sprite(new THREE.SpriteMaterial({map:new THREE.CanvasTexture(cv),depthTest:false,transparent:true,sizeAttenuation:false}));   // constant size on screen
+      sp2.position.copy(p); sp2.scale.set(.15,.045,1); sp2.renderOrder=1000; sp2.userData.room=r; sp.pins.add(sp2);
+    });
+  }
+  const fileSlug=n=>n.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'');
+  const loads=u=>new Promise(ok=>{ const i=new Image(); i.onload=()=>ok(true); i.onerror=()=>ok(false); i.src=u });
+  function probePhotos(){
+    return Promise.all(rooms.filter(r=>!r.kind).map(async r=>{
+      if(ROOM_PHOTOS[r.n]) return;
+      const a=fileSlug(r.n), b=a.replace(/-\d+[a-z]?$/,''), names=[...new Set([a,b,a.replace(/-/g,'_'),b.replace(/-/g,'_')])];
+      for(const n of names) for(const x of ['jpg','jpeg','JPG','png']){ const u='tour/'+n+'.'+x; if(await loads(u)){ photoOf[r.n]=u; return } }
+    })).then(()=>{ photosDone=true; refreshPhotoBtns(); photoPins(); spPins() });
+  }
   const NX=[100,300,500], PS=.22;            // hallway stops (map x) and metres per map unit used for the photo geometry
   const tmeta={}; let tviewer=null, live=[];
   const ctrX=r=>r.x+r.w/2, deg=v=>v*180/Math.PI, nearK=x=>NX.reduce((b,v,i)=>Math.abs(v-x)<Math.abs(NX[b]-x)?i:b,0);
@@ -603,7 +703,7 @@ body.space .ar-card,body.space .edge,body.space .ar-world,body.space #arCam,body
     // rooms
     rooms.filter(r=>!r.kind).forEach(r=>{
       const k=nearK(ctrX(r)), top=r.y<200;
-      mk('r-'+r.id,'tour/room-'+rkind(r)+'.jpg',[hot('hs-exit','↩','Back to the hallway',180,-8,()=>go('c'+r.f+'-'+k,top?180:0),()=>cur!==r)],
+      mk('r-'+r.id,ROOM_PHOTOS[r.n]||photoOf[r.n]||'tour/room-'+rkind(r)+'.jpg',[hot('hs-exit','↩','Back to the hallway',180,-8,()=>go('c'+r.f+'-'+k,top?180:0),()=>cur!==r)],
          {f:r.f,x:ctrX(r),y:r.y+r.h/2,room:r,label:r.n});
     });
     return sc;
@@ -618,11 +718,15 @@ body.space .ar-card,body.space .edge,body.space .ar-world,body.space #arCam,body
   }
   function tourRefresh(){ if(!tviewer) return; live.forEach(h=>h.div.classList.toggle('dest',!!h.a.test())); tourHint(tviewer.getScene()) }
   function tourEnter(r){
+    if(typeof pannellum==='undefined'){ $('tMeta').textContent='The 360 viewer could not load. Check your internet connection and refresh'; return }
     let id, yaw=0;
-    if(r){ const k=nearK(ctrX(r)); id='c'+r.f+'-'+k; yaw=look(NX[k],225,ctrX(r),r.y<200?210:240,1.1).yaw }
+    const own=r&&(ROOM_PHOTOS[r.n]||photoOf[r.n]);        // a room with its own 360 photo opens straight into it
+    if(own){ id='r-'+r.id }
+    else if(r){ const k=nearK(ctrX(r)); id='c'+r.f+'-'+k; yaw=look(NX[k],225,ctrX(r),r.y<200?210:240,1.1).yaw }
     else if(me.y>310){ id=me.y>450?'o0':me.y>365?'o1':'o2' }
     else id='c'+mf+'-'+nearK(me.x);
     if(!tviewer){
+      if(!photosDone){ (photosReady=photosReady||probePhotos()).then(()=>tourEnter(r)); return }
       const sc=buildTour(); sc[id].yaw=yaw;
       tviewer=pannellum.viewer('tourEl',{default:{firstScene:id,sceneFadeDuration:700,hfov:100,minHfov:45,maxHfov:120,autoLoad:true,showControls:false,mouseZoom:true},scenes:sc});
       tviewer.on('scenechange',onScene); onScene(id);
@@ -655,18 +759,30 @@ body.space .ar-card,body.space .edge,body.space .ar-world,body.space #arCam,body
     const scene=new THREE.Scene(); scene.background=new THREE.Color(0x9fd0e8);
     scene.add(new THREE.HemisphereLight(0xffffff,0x8a9a8a,1.5)); const sun=new THREE.DirectionalLight(0xffffff,1); sun.position.set(5,10,7); scene.add(sun);
     const cam=new THREE.PerspectiveCamera(70,1,.05,5000);
-    sp={renderer,scene,cam,box:null,diag:10,gyro:false,yaw:0,pitch:0,align:null,loaded:false,loading:false,on:false,raf:0,gotDev:false,absGot:false,
+    const arrows=new THREE.Group(); scene.add(arrows); const pins=new THREE.Group(); scene.add(pins);
+    const ch=new THREE.Shape(); [[0,.52],[.58,-.02],[.42,-.2],[0,.14],[-.42,-.2],[-.58,-.02]].forEach((q,i)=>i?ch.lineTo(q[0],q[1]):ch.moveTo(q[0],q[1])); ch.closePath();
+    for(let i=0;i<4;i++){
+      const g=new THREE.Group(), mat=(c,o)=>new THREE.MeshBasicMaterial({color:c,transparent:true,opacity:o,side:THREE.DoubleSide,depthWrite:false,depthTest:false});
+      g.add(new THREE.Mesh(new THREE.CircleGeometry(.85,40),mat(0x08301f,.5)));
+      const c2=new THREE.Mesh(new THREE.ShapeGeometry(ch),mat(0xffffff,.96)); c2.position.z=.02; g.add(c2);
+      g.renderOrder=999; g.children.forEach(m=>{m.renderOrder=999}); g.visible=false; arrows.add(g);
+    }
+    sp={arrows,pins,meshes:[],ray:new THREE.Raycaster(),base:null,tween:null,dirty:true,lastA:0,eye:1.6,stride:3,lq:new THREE.Quaternion(),lp:new THREE.Vector3(),renderer,scene,cam,box:null,diag:10,gyro:false,yaw:0,pitch:0,align:null,loaded:false,loading:false,on:false,raf:0,gotDev:false,absGot:false,
         dev:new THREE.Quaternion(),qa:new THREE.Quaternion(),q0:new THREE.Quaternion(),q1:new THREE.Quaternion(-Math.sqrt(.5),0,0,Math.sqrt(.5)),
         e1:new THREE.Euler(),e2:new THREE.Euler(),zee:new THREE.Vector3(0,0,1),yaxis:new THREE.Vector3(0,1,0),fwd:new THREE.Vector3()};
     return true;
   }
-  function sizeSp(){ if(!sp) return; const w=$('spWrap'), W2=w.clientWidth||1, H2=w.clientHeight||1; sp.renderer.setSize(W2,H2,false); sp.cam.aspect=W2/H2; sp.cam.updateProjectionMatrix() }
+  function sizeSp(){ if(!sp) return; const w=$('spWrap'), W2=w.clientWidth||1, H2=w.clientHeight||1; sp.renderer.setSize(W2,H2,false); sp.cam.aspect=W2/H2; sp.cam.setViewOffset(W2,H2,0,Math.round(H2*(H2>W2?.17:.08)),W2,H2); sp.cam.updateProjectionMatrix() }   // shift the picture up so the floor arrows clear the bottom card
   function spLoad(){
     if(sp.loaded||sp.loading) return; sp.loading=true; spMsg('Loading model…');
-    new THREE.GLTFLoader().load(mv.getAttribute('src')||'test.glb',g=>{
+    new THREE.GLTFLoader().load(mv.getAttribute('src')||'campus.glb',g=>{
       g.scene.traverse(o=>{ if(o.isMesh) (Array.isArray(o.material)?o.material:[o.material]).forEach(m=>{ m.side=THREE.DoubleSide }) });
+      g.scene.updateMatrixWorld(true); g.scene.traverse(o=>{ if(o.isMesh) sp.meshes.push(o) });
       sp.scene.add(g.scene); sp.box=new THREE.Box3().setFromObject(g.scene); sp.diag=sp.box.getSize(new THREE.Vector3()).length();
-      sp.loaded=true; sp.loading=false; spMsg(''); spaceGo(cur,true);
+      const sz=sp.box.getSize(new THREE.Vector3());          // size everything from the model itself, so any units work
+      sp.eye=clamp(sz.y*.08,sp.diag*.002,sp.diag*.02); sp.stride=sp.eye*3;
+      sp.cam.near=sp.diag*.0005; sp.cam.far=sp.diag*30; sp.cam.updateProjectionMatrix();
+      sp.loaded=true; sp.loading=false; spMsg(''); spaceGo(cur,true); spPins();
     },x=>{ if(x.total) $('sMeta').textContent='Loading model '+Math.round(100*x.loaded/x.total)+'%' },
     ()=>{ sp.loading=false; spMsg('No model found. Put your 3D file next to this page and name it campus.glb') });
   }
@@ -676,9 +792,41 @@ body.space .ar-card,body.space .edge,body.space .ar-world,body.space #arCam,body
     const b=sp.box, c=b.getCenter(new THREE.Vector3()), s=b.getSize(new THREE.Vector3()), e=eyes[r.id]||EYES[r.id];
     let p, yaw, msg;
     if(e){ p=new THREE.Vector3(e[0],e[1],e[2]); yaw=(e[3]||0)*Math.PI/180; msg=r.n+' · saved spot' }
-    else if(first){ p=new THREE.Vector3(c.x,b.min.y+s.y*.45,b.max.z+sp.diag*.8); yaw=faceYaw(p,c); msg='Tap Look with phone, then move your phone around. Forward walks in' }
-    else { const rc=ctr(r); p=new THREE.Vector3(b.min.x+clamp((rc.x-BX[0])/(BX[1]-BX[0]),0,1)*s.x, b.min.y+s.y*clamp((r.f+.5)/FLOORS.length,0,1), b.min.z+clamp((rc.y-BY[0])/(BY[1]-BY[0]),0,1)*s.z); yaw=faceYaw(p,c); msg=r.n+' · estimated spot. Walk to it, then tap Save spot' }
-    sp.cam.position.copy(p); sp.yaw=yaw; sp.pitch=0; sp.align=null; $('sName').textContent=r.n; $('sMeta').textContent=msg;
+    else if(first){ p=new THREE.Vector3(c.x,b.min.y+s.y*.45,b.max.z-s.z*.1); yaw=faceYaw(p,c); msg='Tap the arrows on the floor to move' }
+    else { const rc=ctr(r); p=new THREE.Vector3(b.min.x+clamp((rc.x-BX[0])/(BX[1]-BX[0]),0,1)*s.x, b.min.y+s.y*clamp((r.f+.5)/FLOORS.length,0,1), b.min.z+clamp((rc.y-BY[0])/(BY[1]-BY[0]),0,1)*s.z); yaw=faceYaw(p,c); msg=r.n+' · estimated spot. Tap the arrows to walk to it, then Save spot' }
+    sp.cam.position.copy(p); sp.yaw=yaw; sp.pitch=0; sp.align=null; sp.base=null; sp.tween=null; sp.dirty=true;
+    if(!e){ const h=cast(p,new THREE.Vector3(0,-1,0),sp.diag); if(h) sp.cam.position.y=h.point.y+sp.eye }   // stand on the floor
+    sp.arrows.children.forEach(g=>{g.visible=false}); $('sName').textContent=r.n; $('sMeta').textContent=msg;
+  }
+  /* ---- Street View style arrows: four chevrons on the floor around you. Tap one to glide there.
+     An arrow only shows where there is floor to stand on and no wall in the way (found by ray casting the model). ---- */
+  const angD=(a,b)=>Math.atan2(Math.sin(a-b),Math.cos(a-b));
+  function cast(o,d,far){ sp.ray.set(o,d); sp.ray.far=far; const h=sp.ray.intersectObjects(sp.meshes,false); return h.length?h[0]:null }
+  function spArrows(){
+    const s=sp; if(!s||!s.loaded) return;
+    const p=s.cam.position, yaw=new THREE.Euler().setFromQuaternion(s.cam.quaternion,'YXZ').y, down=new THREE.Vector3(0,-1,0), far=s.diag;
+    if(s.base==null||Math.abs(angD(yaw,s.base))>.9) s.base=yaw;      // arrows re-aim once you turn about 50 degrees
+    const f0=cast(p,down,far), floor=f0?f0.point.y:p.y-s.eye;
+    s.arrows.children.forEach((g,i)=>{
+      const a=s.base+i*Math.PI/2, dir=new THREE.Vector3(-Math.sin(a),0,-Math.cos(a)), tx=p.x+dir.x*s.stride, tz=p.z+dir.z*s.stride;
+      const wall=!!cast(p,dir,s.stride+s.eye*.6); let ty=floor, step=false;
+      const fh=cast(new THREE.Vector3(tx,p.y,tz),down,far); if(fh){ ty=fh.point.y; step=Math.abs(ty-floor)>s.eye*.9 }
+      g.userData.rank=wall?2:(step?1:0);                 // 0 = clear, 1 = big step, 2 = wall
+      g.position.set(tx,ty+s.eye*.04,tz); g.rotation.set(-Math.PI/2,a,0,'YXZ'); g.userData.to=new THREE.Vector3(tx,ty+s.eye,tz);
+    });
+    // show every clear arrow; if the model leaves none (clutter, odd geometry), fall back to the least blocked ones so you can always move
+    const best=Math.min(...s.arrows.children.map(g=>g.userData.rank));
+    s.arrows.children.forEach(g=>{ g.visible=!s.tween&&g.userData.rank<=Math.max(best,0)&&(g.userData.rank===0||best>0) });
+  }
+  function spPick(e){
+    if(!sp||!sp.loaded||sp.tween) return;
+    const r=$('spWrap').getBoundingClientRect(), v=new THREE.Vector2((e.clientX-r.left)/r.width*2-1,-((e.clientY-r.top)/r.height)*2+1);
+    sp.ray.setFromCamera(v,sp.cam); sp.ray.far=Infinity;
+    const hp=sp.ray.intersectObjects(sp.pins.children,false)[0]; if(hp){ openPhoto(hp.object.userData.room); return }
+    const h=sp.ray.intersectObjects(sp.arrows.children.filter(g=>g.visible),true)[0]; if(!h) return;
+    let g=h.object; while(g.parent!==sp.arrows) g=g.parent;
+    sp.tween={from:sp.cam.position.clone(),to:g.userData.to.clone(),t0:performance.now(),dur:520};
+    sp.arrows.children.forEach(x=>{x.visible=false});
   }
   function applyLook(){
     const s=sp;
@@ -704,7 +852,12 @@ body.space .ar-card,body.space .edge,body.space .ar-world,body.space #arCam,body
     const f=sp.fwd.set(0,0,-1).applyQuaternion(sp.cam.quaternion); f.y=0; if(f.lengthSq()<1e-6) return;
     sp.cam.position.addScaledVector(f.normalize(),clamp(sp.diag*.0008,.02,.12)*dir);
   }
-  function spLoop(){ if(!sp||!sp.on) return; sp.raf=requestAnimationFrame(spLoop); if(held) stepMove(held); applyLook(); sp.renderer.render(sp.scene,sp.cam) }
+  function spLoop(){ if(!sp||!sp.on) return; sp.raf=requestAnimationFrame(spLoop); if(held) stepMove(held); applyLook();
+    const n=performance.now();
+    if(sp.tween){ const t=clamp((n-sp.tween.t0)/sp.tween.dur,0,1), k=t*t*(3-2*t); sp.cam.position.lerpVectors(sp.tween.from,sp.tween.to,k); if(t>=1){ sp.tween=null; sp.dirty=true } }
+    else if(sp.loaded&&n-sp.lastA>250&&(sp.dirty||held||!sp.lq.equals(sp.cam.quaternion)||!sp.lp.equals(sp.cam.position))){
+      sp.lq.copy(sp.cam.quaternion); sp.lp.copy(sp.cam.position); sp.dirty=false; sp.lastA=n; spArrows() }
+    const pu=sp.eye*.9*(1+.07*Math.sin(n/260)); sp.arrows.children.forEach(g=>g.scale.setScalar(pu)); sp.renderer.render(sp.scene,sp.cam) }
   function spaceEnter(){ if(!spaceInit()) return; sp.on=true; requestAnimationFrame(()=>{ sizeSp(); spLoad() }); cancelAnimationFrame(sp.raf); spLoop() }
   function spaceLeave(){ if(!sp) return; sp.on=false; cancelAnimationFrame(sp.raf); stopGyro(); held=0 }
 
@@ -721,7 +874,6 @@ body.space .ar-card,body.space .edge,body.space .ar-world,body.space #arCam,body
   };
   $('sCenter').onclick=()=>{ if(sp){ sp.align=null; $('sMeta').textContent='Recentered' } };
   const hold=(id,d)=>{ const b=$(id); b.addEventListener('pointerdown',e=>{e.preventDefault(); held=d}); ['pointerup','pointerleave','pointercancel'].forEach(t=>b.addEventListener(t,()=>{ if(held===d) held=0 })) };
-  hold('sFwd',1); hold('sBack',-1);
   $('sSave').onclick=()=>{
     if(!sp||!sp.loaded) return; const p=sp.cam.position, e=new THREE.Euler().setFromQuaternion(sp.cam.quaternion,'YXZ');
     eyes[cur.id]=[+p.x.toFixed(2),+p.y.toFixed(2),+p.z.toFixed(2),Math.round(e.y*180/Math.PI)];
@@ -732,9 +884,10 @@ body.space .ar-card,body.space .edge,body.space .ar-world,body.space #arCam,body
     try{ await navigator.clipboard.writeText(t); $('sMeta').textContent='Copied '+Object.keys(eyes).length+' spots' }catch(_){ prompt('Copy these spots',t) } };
   // drag to look when the gyro is off (desktop, or if you prefer)
   let drag=null; const spw=$('spWrap');
-  spw.addEventListener('pointerdown',e=>{ drag={x:e.clientX,y:e.clientY}; try{ spw.setPointerCapture(e.pointerId) }catch(_){} });
-  spw.addEventListener('pointermove',e=>{ if(!drag||!sp||sp.gyro) return; sp.yaw+=(e.clientX-drag.x)*.005; sp.pitch=clamp(sp.pitch+(e.clientY-drag.y)*.005,-1.4,1.4); drag={x:e.clientX,y:e.clientY} });
-  ['pointerup','pointercancel'].forEach(t=>spw.addEventListener(t,()=>{ drag=null }));
+  let dtot=0;
+  spw.addEventListener('pointerdown',e=>{ dtot=0; drag={x:e.clientX,y:e.clientY}; try{ spw.setPointerCapture(e.pointerId) }catch(_){} });
+  spw.addEventListener('pointermove',e=>{ if(!drag||!sp) return; dtot+=Math.abs(e.clientX-drag.x)+Math.abs(e.clientY-drag.y); if(sp.gyro){ drag={x:e.clientX,y:e.clientY}; return } sp.yaw+=(e.clientX-drag.x)*.005; sp.pitch=clamp(sp.pitch+(e.clientY-drag.y)*.005,-1.4,1.4); drag={x:e.clientX,y:e.clientY} });
+  ['pointerup','pointercancel'].forEach(t=>spw.addEventListener(t,e=>{ if(e.type==='pointerup'&&drag&&dtot<14) spPick(e); drag=null }));
   addEventListener('resize',()=>{ if(sp&&sp.on) sizeSp() });
   addEventListener('resize',fit);
   addEventListener('pagehide',()=>{if(stream) stream.getTracks().forEach(t=>t.stop())});
@@ -743,6 +896,7 @@ body.space .ar-card,body.space .edge,body.space .ar-world,body.space #arCam,body
           k=clamp(Math.min(W2/560,availH/210),Math.max(.75,W2/VMAX),W2/VMIN);
     vw=W2/k; vc={x:300,y:H2>W2?120+(H2/2-150)/k:225-((150+availH/2)-H2/2)/k}; setFollow(false);   // phones: building right under the top controls, clear of the side buttons
   }
+  photosReady=probePhotos();
   render(); frame(); update();
 })();
 </script>
