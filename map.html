@@ -141,6 +141,9 @@ body.v2d #fl{display:flex}
 .hs{display:block; border:0; background:var(--route); color:#1b3a10; font:600 .8rem var(--body); padding:6px 11px; border-radius:999px; box-shadow:0 4px 14px rgba(0,0,0,.45); white-space:nowrap; pointer-events:none}
 .hs.me{background:#fff; color:#12301f}
 .hs.ph{pointer-events:auto; cursor:pointer; background:#fff; color:#12301f}
+#routeCase{fill:none; stroke:rgba(8,48,31,.75); stroke-width:8; stroke-linecap:round; stroke-linejoin:round; pointer-events:none}
+#routeLine{fill:none; stroke:#f6d55c; stroke-width:4.5; stroke-dasharray:9 8; stroke-linecap:round; stroke-linejoin:round; pointer-events:none; animation:rdash .9s linear infinite}
+@keyframes rdash{to{stroke-dashoffset:-34}}
 #tGyro{display:none!important}   /* look-around is automatic now */
 #photoDock{position:absolute; z-index:4; left:14px; right:14px; max-width:520px; margin:0 auto; top:max(170px,calc(env(safe-area-inset-top) + 162px)); height:min(36vh,320px); border-radius:20px; overflow:hidden; display:none; background:#000; box-shadow:0 10px 30px rgba(0,0,0,.5); border:2px solid rgba(255,255,255,.85)}
 #photoDock.on{display:block}
@@ -357,7 +360,7 @@ window.addEventListener('error',e=>{ const t=document.getElementById('bugToast')
     if(f===0){
       add(f,'Stairs C',230,248,26,52,'stairs'); add(f,'Stairs D',424,240,30,60,'stairs');
       add(f,'Elev 1',248,158,26,30,'lift'); add(f,'Elev 2',280,158,26,30,'lift');
-      add(f,'CSSU Desk',280,212,40,30);
+      add(f,'CSSU Desk',258,212,40,30);
     } else {
       add(f,'Stairs C',230,210,30,30,'stairs'); add(f,'Stairs D',424,210,30,30,'stairs');
       add(f,'Lift',288,262,24,20,'lift');
@@ -388,7 +391,8 @@ window.addEventListener('error',e=>{ const t=document.getElementById('bugToast')
     if(f===0) g+=DOORS;
     g+='</g>';
   });
-  g+='<g id="pin"><path d="M0 0c-8-10-12-16-12-22a12 12 0 0124 0c0 6-4 12-12 22z" fill="#e8554a" stroke="#fff" stroke-width="2"/><circle cy="-22" r="4.5" fill="#fff"/></g>'
+  g+='<path id="routeCase" d=""/><path id="routeLine" d=""/>'
+   +'<g id="pin"><path d="M0 0c-8-10-12-16-12-22a12 12 0 0124 0c0 6-4 12-12 22z" fill="#e8554a" stroke="#fff" stroke-width="2"/><circle cy="-22" r="4.5" fill="#fff"/></g>'
    +'<g id="me"><circle class="acc" id="acc" r="0"/><circle class="pulse" r="14"/><path id="cone" d="M0 0L-24 -52A58 58 0 0 1 24 -52Z" fill="url(#cg)" display="none"/><circle r="7.5" fill="#f6d55c" stroke="#fff" stroke-width="3"/><text class="you" id="youTxt" y="-16">You are here</text></g>';
   svg.innerHTML=g;
   rooms.filter(r=>r.kind).forEach(r=>{$('ar-'+r.id).textContent=r.f<FLOORS.length-1?'▲':'▼'});
@@ -412,6 +416,43 @@ window.addEventListener('error',e=>{ const t=document.getElementById('bugToast')
       if(!best||d<best.d) best={tx:p.x,ty:p.y,d,via:st,leg}});
     return best;
   }
+  /* ---- yellow dashed route on the floor plan: me -> hallway -> the room's door -> the room ----
+     Everyone walks the hallway lane (y 225). Rooms open onto it: top-row doors at y 210, bottom-row doors at y 240; outside you come in by the entrance at x 308.
+     On the ground floor the CSSU desk is walked around through the top lobby. Going to another floor draws the walk to the stairs/lift on this
+     floor, and the rest of the walk from the matching stairs/lift when you look at the destination floor. */
+  const HALL=225, roomAt=(f,p)=>rooms.find(r=>r.f===f&&p.x>=r.x&&p.x<=r.x+r.w&&p.y>=r.y&&p.y<=r.y+r.h);
+  function toHall(f,p){
+    if(p.y>305) return [[p.x,p.y],[308,p.y],[308,300],[308,HALL]];                    // outside: in through the entrance
+    const r=roomAt(f,p);
+    if(r){ const cx=r.x+r.w/2;
+      if(r.y+r.h<=215){ return (f===0&&cx>240&&cx<340)?[[p.x,p.y],[cx,205],[302,205],[302,HALL]]:[[p.x,p.y],[cx,210],[cx,HALL]] }   // top row (or the lobby lifts)
+      if(r.y>=235) return [[p.x,p.y],[cx,240],[cx,HALL]];                                                                         // bottom row
+    }
+    return [[p.x,p.y],[p.x,HALL]];
+  }
+  function lane(f,xa,xb){                                  // along the hallway, around the desk on the ground floor
+    const lo=Math.min(xa,xb), hi=Math.max(xa,xb);
+    if(f===0&&lo<298&&hi>258) return xb>xa?[[252,HALL],[252,205],[302,205],[302,HALL]]:[[302,HALL],[302,205],[252,205],[252,HALL]];
+    return [];
+  }
+  function walk(f,a,b){
+    const A=toHall(f,a), B=toHall(f,b).reverse(), xa=A[A.length-1][0], xb=B[0][0];
+    const pts=[...A,...lane(f,xa,xb),...B], out=[];
+    pts.forEach(q=>{ const l=out[out.length-1]; if(!l||Math.abs(l[0]-q[0])>.5||Math.abs(l[1]-q[1])>.5) out.push(q) });
+    return out;
+  }
+  function routePts(rt){
+    if(cur.f===mf) return vf===mf&&rd(cur)>0 ? walk(mf,me,ctr(cur)) : null;
+    if(vf===mf) return walk(mf,me,ctr(rt.via));
+    if(vf===cur.f){ const c0=ctr(rt.via), alt=rooms.filter(q=>q.f===cur.f&&q.kind===rt.via.kind)
+        .sort((a,b)=>Math.hypot(ctr(a).x-c0.x,ctr(a).y-c0.y)-Math.hypot(ctr(b).x-c0.x,ctr(b).y-c0.y))[0];
+      return alt?walk(cur.f,ctr(alt),ctr(cur)):null }
+    return null;
+  }
+  function drawRoute(rt){
+    const pts=routePts(rt), d=pts&&pts.length>1?'M'+pts.map(q=>q[0]+' '+q[1]).join('L'):'';
+    $('routeCase').setAttribute('d',d); $('routeLine').setAttribute('d',d);
+  }
   function fit(){
     const ratio=(svg.clientHeight&&svg.clientWidth)?svg.clientHeight/svg.clientWidth:1.5, h=vw*ratio;
     if(follow){vc.x=me.x; vc.y=me.y}
@@ -431,6 +472,7 @@ window.addEventListener('error',e=>{ const t=document.getElementById('bugToast')
     FLOORS.forEach((_,f)=>{$('fg-'+f).style.display=f===vf?'':'none'});
     document.querySelectorAll('#fl .zb').forEach(bt=>{const f=+bt.dataset.f; bt.setAttribute('aria-pressed',f===vf); bt.classList.toggle('mine',f===mf)});
     labels();
+    drawRoute(rt);
     // me + pin
     $('me').setAttribute('transform','translate('+me.x+' '+me.y+')');
     $('me').classList.toggle('ghost',vf!==mf); $('youTxt').textContent=vf===mf?'You are here':'You: '+FLOORS[mf];
