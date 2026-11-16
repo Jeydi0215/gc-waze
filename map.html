@@ -524,7 +524,7 @@ window.addEventListener('error',e=>{ const t=document.getElementById('bugToast')
   }
   let glideTo=null, gliding=false;
   function glide(){                                        // ease the dot to each new GPS fix instead of jumping
-    if(!glideTo||!walking){ gliding=false; return }
+    if(!glideTo){ gliding=false; return }
     const dx=glideTo.x-me.x, dy=glideTo.y-me.y;
     if(Math.hypot(dx,dy)<.3){ me={x:glideTo.x,y:glideTo.y}; glideTo=null; gliding=false; update(); return }
     me={x:me.x+dx*.35,y:me.y+dy*.35}; update(); setTimeout(glide,90);
@@ -1043,21 +1043,32 @@ window.addEventListener('error',e=>{ const t=document.getElementById('bugToast')
     if(!liveInit()) return;
     setTimeout(()=>lf.invalidateSize(),60);
     if(!navigator.geolocation){ $('lMeta').textContent='This browser cannot find your location'; return }
-    if(lWatch==null) lWatch=navigator.geolocation.watchPosition(onLive,e=>{ $('lMeta').textContent=e.code===1?'Location is blocked. Allow it in your browser settings':'Cannot find you yet. Try going outside' },{enableHighAccuracy:true,maximumAge:1000,timeout:20000});
-    liveRefresh();
+    startTrack(); liveMark(); liveRefresh();
   }
-  function liveLeave(){
-    if(!liveOn) return; liveOn=false;
-    if(lWatch!=null){ navigator.geolocation.clearWatch(lWatch); lWatch=null }
+  function liveLeave(){ liveOn=false }                     // tracking keeps running, so the floor plan dot keeps moving
+  /* Location tracking runs all the time once started (at launch when the building is already placed, otherwise when the Live map opens),
+     so the dot on the 2D floor plan moves with you whichever view you are looking at. */
+  function startTrack(){
+    if(lWatch!=null||!navigator.geolocation) return;
+    lWatch=navigator.geolocation.watchPosition(onLive,e=>{
+      const m=e.code===1?'Location is blocked. Allow it in your browser settings':'Cannot find you yet. Try going outside';
+      if(liveOn) $('lMeta').textContent=m; else say(m,4000) },{enableHighAccuracy:true,maximumAge:1000,timeout:20000});
+    if(!(window.DeviceOrientationEvent&&DeviceOrientationEvent.requestPermission)) listenOri();
   }
   function onLive(p){
     const c=p.coords; lPos={lat:c.latitude,lng:c.longitude,acc:c.accuracy,course:(c.heading!=null&&!isNaN(c.heading))?c.heading:null};
-    if(!lf) return; const ll=[c.latitude,c.longitude];
+    if(bc&&c.accuracy<=40&&!walking){                      // the floor plan dot follows you, in every view
+      const m=llToMap(c.latitude,c.longitude); glideTo={x:clamp(m.x,6,W-6),y:clamp(m.y,6,H-6)}; if(!gliding){ gliding=true; glide() }
+      $('acc').setAttribute('r',c.accuracy>8?Math.min(c.accuracy,60)/M:0);
+    }
+    if(liveOn) liveMark();
+  }
+  function liveMark(){                                     // Leaflet marker, only while the Live map is on screen
+    if(!lf||!lPos||!lKit) return; const ll=[lPos.lat,lPos.lng];
     if(!lf.hasLayer(lKit.me)){ lKit.me.addTo(lf); lKit.acc.addTo(lf) }
-    lKit.me.setLatLng(ll); lKit.acc.setLatLng(ll).setRadius(Math.max(c.accuracy,3));
+    lKit.me.setLatLng(ll); lKit.acc.setLatLng(ll).setRadius(Math.max(lPos.acc,3));
     if(lFirst){ lFirst=false; lf.setView(ll,18) } else if(lFollow) lf.panTo(ll,{animate:true,duration:.6});
-    if(bc&&c.accuracy<=40){ const m=llToMap(c.latitude,c.longitude); me={x:clamp(m.x,6,W-6),y:clamp(m.y,6,H-6)}; update() }   // the floor plan dot moves too
-    else liveRefresh();
+    liveRefresh();
   }
   function liveRefresh(){
     if(!lf||!liveOn) return; const k=lKit, deg=heading!=null?heading:(lPos&&lPos.course!=null?lPos.course:null), cone=$('lfCone');
@@ -1087,6 +1098,7 @@ window.addEventListener('error',e=>{ const t=document.getElementById('bugToast')
   const turn=d=>{ if(!bc){ $('lMeta').textContent='Place the building first'; return } NORTH=((NORTH+d)%360+360)%360; saveGeo(); liveRefresh() };
   $('lRotL').onclick=()=>turn(-10); $('lRotR').onclick=()=>turn(10);
   $('lPlan').onclick=()=>{ view='2d'; render() };
+  if(bc) startTrack();                                     // building already placed: start following you straight away
   render(); frame(); update();
 })();
 </script>
