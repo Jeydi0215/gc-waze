@@ -9,6 +9,9 @@
 <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,800&family=Figtree:wght@400;500;600&display=swap" rel="stylesheet">
 <!-- 360 viewer: uses lib/pannellum.* if you have it, otherwise loads it online -->
 <link rel="stylesheet" href="lib/pannellum.css" onerror="this.onerror=null;this.href='https://cdnjs.cloudflare.com/ajax/libs/pannellum/2.5.6/pannellum.css'">
+<!-- Live map: Leaflet + OpenStreetMap tiles (needs internet) -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css" onerror="this.onerror=null;this.href='https://unpkg.com/leaflet@1.9.4/dist/leaflet.css'">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js" onerror="document.write('<script src=&quot;https://unpkg.com/leaflet@1.9.4/dist/leaflet.js&quot;><\/script>')"></script>
 <script src="lib/pannellum.js" onerror="document.write('<script src=&quot;https://cdnjs.cloudflare.com/ajax/libs/pannellum/2.5.6/pannellum.js&quot;><\/script>')"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
@@ -192,6 +195,28 @@ body.tour .ar-card,body.tour .edge,body.tour .ar-world,body.tour #arCam,body.tou
 body.space #spWrap{display:block}
 body.space .scard{display:flex}
 body.space .ar-card,body.space .edge,body.space .ar-world,body.space #arCam,body.space .ar-tint,body.space .ar-bg{display:none!important}
+/* live map (Leaflet) */
+#leafWrap{position:absolute; inset:0; display:none; z-index:1; isolation:isolate; background:#cfe3d6}
+#leafEl{position:absolute; inset:0}
+#leafWrap .leaflet-top.leaflet-right{top:132px}
+#leafWrap .leaflet-bottom{bottom:178px}
+.lcard{display:none; position:absolute; left:14px; right:14px; bottom:max(14px,env(safe-area-inset-bottom)); max-width:520px; margin:0 auto; z-index:3; flex-wrap:wrap; align-items:center; gap:8px;
+  padding:14px 14px 12px; border-radius:22px; background:var(--paper); color:#12301f; box-shadow:0 18px 44px rgba(0,0,0,.4)}
+.lcard>div{flex:1 1 100%; margin-bottom:2px}
+.lcard strong{display:block; font-family:var(--display); font-size:1.2rem; line-height:1.1}
+.lcard span{font-size:.85rem; color:#4c6a58}
+.lcard .btn{flex:1 1 28%; padding:10px 8px; background:#12301f; color:var(--mint); border:0; cursor:pointer; font:600 .82rem var(--body); text-align:center; user-select:none; -webkit-user-select:none}
+.lcard .btn[aria-pressed=true]{background:var(--route); color:#1b3a10}
+body.live #leafWrap{display:block}
+body.live .lcard{display:flex}
+body.live .ar-world,body.live #arCam,body.live .ar-tint,body.live .ar-bg,body.live .ar-card,body.live .edge,body.live #sub,body.live .ar-note,body.live #start{display:none!important}
+.lf-me{background:none; border:0}
+.lf-dot{position:absolute; left:3px; top:3px; width:20px; height:20px; border-radius:50%; background:#f6d55c; border:3px solid #fff; box-shadow:0 0 0 2px rgba(18,48,31,.35),0 2px 8px rgba(0,0,0,.45)}
+.lf-cone{position:absolute; left:-7px; top:-34px; width:40px; height:40px; transform-origin:20px 47px; background:linear-gradient(to top,rgba(246,213,92,.75),rgba(246,213,92,0)); clip-path:polygon(50% 100%,0 0,100% 0)}
+.lf-b{transform:translate(-50%,-50%); width:max-content; white-space:nowrap; background:#1f9a63; color:#fff; font:600 11px var(--body); padding:5px 10px; border-radius:999px; border:2px solid #fff; box-shadow:0 2px 8px rgba(0,0,0,.4); text-align:center; cursor:grab}
+.lf-b small{display:block; font-weight:500; opacity:.85}
+.lf-pin{transform:translate(-50%,-100%); width:max-content; background:#e8554a; color:#fff; font:600 11px var(--body); padding:4px 9px; border-radius:999px; border:2px solid #fff; white-space:nowrap; box-shadow:0 2px 8px rgba(0,0,0,.4)}
+.lf-door{width:12px; height:12px; border-radius:50%; background:#f6d55c; border:2px solid #12301f}
 </style>
 </head>
 <body>
@@ -255,6 +280,7 @@ body.space .ar-card,body.space .edge,body.space .ar-world,body.space #arCam,body
   </div>
   <div class="modes" id="vsw" role="tablist" aria-label="Map view">
     <button role="tab" id="v2" aria-selected="true">2D</button>
+    <button role="tab" id="vL" aria-selected="false">Live map</button>
     <button role="tab" id="v3" aria-selected="false">3D</button>
   </div>
   <div class="modes" id="sub" role="tablist" aria-label="3D mode">
@@ -267,6 +293,15 @@ body.space .ar-card,body.space .edge,body.space .ar-world,body.space #arCam,body
   <div class="ar-card">
     <div><strong id="arHint">Head straight ahead</strong><span id="arMeta">240 m · 3 min walk</span></div>
     <a class="btn" href="index.html">End route</a>
+  </div>
+  <div id="leafWrap"><div id="leafEl"></div></div>
+  <div class="lcard" id="lcard">
+    <div><strong id="lName">Live map</strong><span id="lMeta">Allow location to see where you are</span></div>
+    <button class="btn" id="lFollow" aria-pressed="true">Follow me</button>
+    <button class="btn" id="lDoor">I’m at the front door</button>
+    <button class="btn" id="lPlan">Floor plan</button>
+    <button class="btn" id="lRotL" aria-label="Turn the building left">⟲ Turn</button>
+    <button class="btn" id="lRotR" aria-label="Turn the building right">Turn ⟳</button>
   </div>
   <div id="photoDock"><div id="dockEl"></div><div class="dk-top"><span id="dkName"></span><button id="dkBig" type="button">Full screen</button><button id="dkX" type="button" aria-label="Hide photo">✕</button></div></div>
   <div id="photoView"><div id="photoEl"></div><div class="pv-top"><strong id="pvName">360° photo</strong><button class="btn" id="pvClose">Close</button></div></div>
@@ -289,7 +324,7 @@ window.addEventListener('error',e=>{ const t=document.getElementById('bugToast')
   const cam=$('arCam'), world=$('arWorld'), sel=$('arDest'), note=$('arNote'), L=$('edgeL'), R=$('edgeR'),
         start=$('start'), svg=$('mapSvg'), chips=$('nearby');
   const W=600, H=540, M=.55;            // map size and metres per map unit
-  const NORTH=0;                        // compass bearing (degrees) of the map's "up". SAMPLE: set to your campus orientation
+  let NORTH=0;                        // compass bearing (degrees) of the map's "up". SAMPLE: set to your campus orientation
   let anchor=null, gpsGood=false, wl=null;   // GPS anchor: the first good fix is pinned to where the dot is, then GPS movement moves the dot
   const GEO={lat:null,lng:null};        // optional: real lat/lng of the map centre (300,270). When set, GPS moves the dot; otherwise steps do
   const STEP=.7/M, VMIN=90, VMAX=900;   // step length in map units, zoom limits (viewBox width)
@@ -388,7 +423,7 @@ window.addEventListener('error',e=>{ const t=document.getElementById('bugToast')
   function zoomBy(f){vw=clamp(vw*f,VMIN,VMAX); fit(); labels()}
   function setFollow(v){follow=v; $('zFollow').setAttribute('aria-pressed',v); fit()}
 
-  function update(){ refreshPhotoBtns();
+  function update(){ refreshPhotoBtns(); if(liveOn) liveRefresh();
     const rt=route(), dm=Math.round(rt.d*M), b=(Math.atan2(rt.tx-me.x,-(rt.ty-me.y))*180/Math.PI+360)%360;
     // floors
     FLOORS.forEach((_,f)=>{$('fg-'+f).style.display=f===vf?'':'none'});
@@ -523,7 +558,8 @@ window.addEventListener('error',e=>{ const t=document.getElementById('bugToast')
     if(sp&&sp.on&&!(view==='3d'&&sub==='space')) spaceLeave();
     const cams=view==='3d'&&sub==='cam';
     document.body.classList.toggle('v2d',view==='2d'); document.body.classList.toggle('model',view==='3d'&&sub==='model'); document.body.classList.toggle('tour',view==='3d'&&sub==='tour'); document.body.classList.toggle('space',view==='3d'&&sub==='space'); $('mSpace').setAttribute('aria-selected',sub==='space'); if(view==='3d'&&sub==='space') spaceEnter(); $('mTour').setAttribute('aria-selected',sub==='tour');
-    $('v2').setAttribute('aria-selected',view==='2d'); $('v3').setAttribute('aria-selected',view==='3d');
+    $('v2').setAttribute('aria-selected',view==='2d'); $('v3').setAttribute('aria-selected',view==='3d'); $('vL').setAttribute('aria-selected',view==='live');
+    document.body.classList.toggle('live',view==='live'); if(view==='live') liveEnter(); else liveLeave();
     $('mCam').setAttribute('aria-selected',sub==='cam'); $('mMod').setAttribute('aria-selected',sub==='model');
     start.classList.toggle('off',!(cams&&!stream&&!asked)); fit(); refreshPhotoBtns();
     if(view==='3d'&&sub==='model') requestAnimationFrame(()=>flyTo(cur));
@@ -548,6 +584,7 @@ window.addEventListener('error',e=>{ const t=document.getElementById('bugToast')
     }catch(e){cam.style.display='none'; note.classList.add('show')}
   }
   $('v2').onclick=()=>{view='2d'; render()};
+  $('vL').onclick=()=>{view='live'; render()};
   $('v3').onclick=()=>{view='3d'; if(sub==='tour') pendingTour=cur; render()};   // 3D opens the selected room in the photo walk-through
   $('mCam').onclick=()=>{sub='cam'; render()};
   $('mMod').onclick=()=>{sub='model'; render()};
@@ -897,6 +934,97 @@ window.addEventListener('error',e=>{ const t=document.getElementById('bugToast')
     vw=W2/k; vc={x:300,y:H2>W2?120+(H2/2-150)/k:225-((150+availH/2)-H2/2)/k}; setFollow(false);   // phones: building right under the top controls, clear of the side buttons
   }
   photosReady=probePhotos();
+  /* ---- Live map (Leaflet): a real map that moves as you move ----
+     Your dot follows your GPS. To see the building on the map, stand at the front door and tap "I'm at the front door",
+     then drag the green label and tap Turn until the outline sits on the real building. It is remembered on this phone,
+     and from then on your position also moves the dot on the floor plan. GPS indoors can be off by 10 m or more. */
+  const D2R=Math.PI/180, MLAT=111320;
+  let bc=null, liveOn=false, lf=null, lWatch=null, lFollow=true, lPos=null, lFirst=true, lKit=null;   // bc = lat/lng of the building centre (map point 300,225)
+  try{ const g=JSON.parse(localStorage.getItem('gcw-geo')||'null'); if(g&&g.lat!=null){ bc={lat:g.lat,lng:g.lng}; NORTH=g.north||0 } }catch(e){}
+  function mapToLL(x,y){
+    const dx=(x-300)*M, dy=(y-225)*M, d=Math.hypot(dx,dy), b=Math.atan2(dx,-dy)+NORTH*D2R;
+    return {lat:bc.lat+d*Math.cos(b)/MLAT, lng:bc.lng+d*Math.sin(b)/(MLAT*Math.cos(bc.lat*D2R))};
+  }
+  function llToMap(lat,lng){
+    const n=(lat-bc.lat)*MLAT, e=(lng-bc.lng)*MLAT*Math.cos(bc.lat*D2R), d=Math.hypot(e,n), p=Math.atan2(e,n)-NORTH*D2R;
+    return {x:300+d*Math.sin(p)/M, y:225-d*Math.cos(p)/M};
+  }
+  function setGEO(){ if(!bc){ GEO.lat=null; GEO.lng=null; return } const c=mapToLL(300,270); GEO.lat=c.lat; GEO.lng=c.lng }   // lets walking mode on the floor plan use the same placement
+  function saveGeo(){ try{ localStorage.setItem('gcw-geo',JSON.stringify({lat:bc.lat,lng:bc.lng,north:NORTH})) }catch(_){}; setGEO() }
+  setGEO();
+  const metres=(a,b)=>{ const dn=(b.lat-a.lat)*MLAT, de=(b.lng-a.lng)*MLAT*Math.cos(a.lat*D2R); return Math.hypot(dn,de) };
+
+  function liveInit(){
+    if(lf) return true;
+    const LF=window.L;                                     // (inside this file L is the edge arrow, so the map library is read from window)
+    if(!LF||!LF.map){ $('lMeta').textContent='The map library could not load. Check your internet and refresh'; return false }
+    lf=LF.map('leafEl',{zoomControl:false}).setView(bc?[bc.lat,bc.lng]:[12.88,121.77],bc?18:5);
+    LF.control.zoom({position:'topright'}).addTo(lf);
+    LF.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'&copy; OpenStreetMap contributors'}).addTo(lf);
+    lf.on('dragstart',()=>{ lFollow=false; $('lFollow').setAttribute('aria-pressed',false) });
+    lKit={LF,
+      acc:LF.circle([0,0],{radius:10,color:'#f6d55c',weight:1,fillColor:'#f6d55c',fillOpacity:.15}),
+      me:LF.marker([0,0],{icon:LF.divIcon({className:'lf-me',html:'<div class="lf-cone" id="lfCone"></div><div class="lf-dot"></div>',iconSize:[26,26],iconAnchor:[13,13]}),zIndexOffset:1000,interactive:false}),
+      bld:LF.polygon([[0,0],[0,0],[0,0],[0,0]],{color:'#1f9a63',weight:3,fillColor:'#1f9a63',fillOpacity:.3}),
+      tag:LF.marker([0,0],{draggable:true,icon:LF.divIcon({className:'',html:'<div class="lf-b">Gordon College<small>drag to align</small></div>',iconSize:[0,0]})}),
+      doors:[200,400].map(x=>LF.marker([0,0],{icon:LF.divIcon({className:'',html:'<div class="lf-door"></div>',iconSize:[12,12],iconAnchor:[6,6]}),interactive:false})),
+      pin:LF.marker([0,0],{icon:LF.divIcon({className:'',html:'<div class="lf-pin" id="lfPin"></div>',iconSize:[0,0]}),interactive:false}),
+      line:LF.polyline([],{color:'#e8554a',weight:4,dashArray:'6 8'})};
+    lKit.tag.on('dragend',()=>{ const p=lKit.tag.getLatLng(); bc={lat:p.lat,lng:p.lng}; saveGeo(); liveRefresh() });
+    return true;
+  }
+  function liveEnter(){
+    if(liveOn) return; liveOn=true;
+    if(window.DeviceOrientationEvent&&DeviceOrientationEvent.requestPermission){            // compass for the direction cone (iPhone asks)
+      DeviceOrientationEvent.requestPermission().then(r=>{ if(r==='granted') listenOri() }).catch(()=>{});
+    } else listenOri();
+    if(!liveInit()) return;
+    setTimeout(()=>lf.invalidateSize(),60);
+    if(!navigator.geolocation){ $('lMeta').textContent='This browser cannot find your location'; return }
+    if(lWatch==null) lWatch=navigator.geolocation.watchPosition(onLive,e=>{ $('lMeta').textContent=e.code===1?'Location is blocked. Allow it in your browser settings':'Cannot find you yet. Try going outside' },{enableHighAccuracy:true,maximumAge:1000,timeout:20000});
+    liveRefresh();
+  }
+  function liveLeave(){
+    if(!liveOn) return; liveOn=false;
+    if(lWatch!=null){ navigator.geolocation.clearWatch(lWatch); lWatch=null }
+  }
+  function onLive(p){
+    const c=p.coords; lPos={lat:c.latitude,lng:c.longitude,acc:c.accuracy,course:(c.heading!=null&&!isNaN(c.heading))?c.heading:null};
+    if(!lf) return; const ll=[c.latitude,c.longitude];
+    if(!lf.hasLayer(lKit.me)){ lKit.me.addTo(lf); lKit.acc.addTo(lf) }
+    lKit.me.setLatLng(ll); lKit.acc.setLatLng(ll).setRadius(Math.max(c.accuracy,3));
+    if(lFirst){ lFirst=false; lf.setView(ll,18) } else if(lFollow) lf.panTo(ll,{animate:true,duration:.6});
+    if(bc&&c.accuracy<=40){ const m=llToMap(c.latitude,c.longitude); me={x:clamp(m.x,6,W-6),y:clamp(m.y,6,H-6)}; update() }   // the floor plan dot moves too
+    else liveRefresh();
+  }
+  function liveRefresh(){
+    if(!lf||!liveOn) return; const k=lKit, deg=heading!=null?heading:(lPos&&lPos.course!=null?lPos.course:null), cone=$('lfCone');
+    if(cone) cone.style.display=deg==null?'none':'', cone&&deg!=null&&(cone.style.transform='rotate('+deg+'deg)');
+    $('lName').textContent=cur.n+' · '+FLOORS[cur.f];
+    if(!bc){
+      [k.bld,k.tag,k.pin,k.line,...k.doors].forEach(l=>{ if(lf.hasLayer(l)) lf.removeLayer(l) });
+      $('lMeta').textContent=lPos?'Stand at the front door and tap “I’m at the front door” to place the building':'Waiting for your location…'; return;
+    }
+    const pts=[[40,150],[560,150],[560,300],[40,300]].map(q=>{const l=mapToLL(q[0],q[1]); return [l.lat,l.lng]});
+    k.bld.setLatLngs(pts); if(!lf.hasLayer(k.bld)) k.bld.addTo(lf);
+    const cc=mapToLL(300,225); k.tag.setLatLng([cc.lat,cc.lng]); if(!lf.hasLayer(k.tag)) k.tag.addTo(lf);
+    k.doors.forEach((d,i)=>{ const l=mapToLL(i?400:200,300); d.setLatLng([l.lat,l.lng]); if(!lf.hasLayer(d)) d.addTo(lf) });
+    const dl=mapToLL(ctr(cur).x,ctr(cur).y); k.pin.setLatLng([dl.lat,dl.lng]); if(!lf.hasLayer(k.pin)) k.pin.addTo(lf);
+    const pe=$('lfPin'); if(pe) pe.textContent=cur.n+' · '+FLOORS[cur.f];
+    if(lPos){ k.line.setLatLngs([[lPos.lat,lPos.lng],[dl.lat,dl.lng]]); if(!lf.hasLayer(k.line)) k.line.addTo(lf);
+      const d=Math.round(metres(lPos,{lat:dl.lat,lng:dl.lng}));
+      $('lMeta').textContent=(d<400?d+' m away':(d/1000).toFixed(1)+' km away')+(d<400&&cur.f!==0?' · up to '+FLOORS[cur.f]:'')+(lPos.acc>25?' · GPS is weak ('+Math.round(lPos.acc)+' m)':'');
+    } else { $('lMeta').textContent='Waiting for your location…' }
+  }
+  $('lFollow').onclick=()=>{ lFollow=!lFollow; $('lFollow').setAttribute('aria-pressed',lFollow); if(lFollow&&lPos&&lf) lf.panTo([lPos.lat,lPos.lng]) };
+  $('lDoor').onclick=()=>{                                 // pin the building so its front door (map point 300,300) is where you stand
+    if(!lPos){ $('lMeta').textContent='Waiting for your location…'; return }
+    bc={lat:lPos.lat,lng:lPos.lng}; const f=mapToLL(300,300), dlat=f.lat-bc.lat, dlng=f.lng-bc.lng; bc={lat:bc.lat-dlat,lng:bc.lng-dlng};
+    saveGeo(); liveRefresh(); if(lf) lf.setView([lPos.lat,lPos.lng],19);
+  };
+  const turn=d=>{ if(!bc){ $('lMeta').textContent='Place the building first'; return } NORTH=((NORTH+d)%360+360)%360; saveGeo(); liveRefresh() };
+  $('lRotL').onclick=()=>turn(-10); $('lRotR').onclick=()=>turn(10);
+  $('lPlan').onclick=()=>{ view='2d'; render() };
   render(); frame(); update();
 })();
 </script>
