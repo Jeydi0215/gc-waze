@@ -336,7 +336,7 @@ window.addEventListener('error',e=>{ const t=document.getElementById('bugToast')
         start=$('start'), svg=$('mapSvg'), chips=$('nearby');
   const W=600, H=540, M=.55;            // map size and metres per map unit
   let NORTH=0;                        // compass bearing (degrees) of the map's "up". SAMPLE: set to your campus orientation
-  let anchor=null, gpsGood=false, wl=null;   // GPS anchor: the first good fix is pinned to where the dot is, then GPS movement moves the dot
+  let anchor=null, gpsGood=false, wl=null, lastTgt=null, lastGpsMove=0, stepMoved=false, walkAsk=false, gest=false, lastOri=0, motionOn=false;   // GPS anchor: the first good fix is pinned to where the dot is, then GPS movement moves the dot
   const GEO={lat:null,lng:null};        // optional: real lat/lng of the map centre (300,270). When set, GPS moves the dot; otherwise steps do
   const STEP=.7/M, VMIN=90, VMAX=900;   // step length in map units, zoom limits (viewBox width)
   const FLOORS=['1F','2F','3F','4F','5F'], FLOOR_NAMES=['1st floor','2nd floor','3rd floor','4th floor','5th floor'];
@@ -552,22 +552,29 @@ window.addEventListener('error',e=>{ const t=document.getElementById('bugToast')
   function onMotion(e){
     const a=e.accelerationIncludingGravity; if(!a||a.x==null) return; sensed=true;
     const m=Math.hypot(a.x,a.y,a.z); g0=g0*.92+m*.08; const d=m-g0, t=performance.now();
-    if(!above && d>1.4 && t-lastStep>330){above=true; lastStep=t; step()} else if(d<.5) above=false;
+    if(!above && d>1.1 && t-lastStep>300){above=true; lastStep=t; step()} else if(d<.5) above=false;
   }
   function step(){
-    if(heading==null||GEO.lat!=null||gpsGood) return;   // steps only when GPS is not doing the job
+    if(heading==null||gpsGood) return;                       // GPS only takes over while it is really tracking your movement
     const h=(heading-NORTH)*Math.PI/180;
-    me={x:clamp(me.x+Math.sin(h)*STEP,6,W-6),y:clamp(me.y-Math.cos(h)*STEP,6,H-6)}; update();
+    me={x:clamp(me.x+Math.sin(h)*STEP,6,W-6),y:clamp(me.y-Math.cos(h)*STEP,6,H-6)}; stepMoved=true; update();
   }
   function onGPS(p){
-    const c=p.coords; $('acc').setAttribute('r',c.accuracy>8?Math.min(c.accuracy,60)/M:0);
-    if(GEO.lat!=null) anchor={lat:GEO.lat,lng:GEO.lng,x:300,y:270};          // exact campus coordinates known
-    else if(c.accuracy>25){ if(gpsGood){ gpsGood=false; anchor=null; say('GPS is weak here, steps take over',3000) } return }
-    else if(!anchor){ anchor={lat:c.latitude,lng:c.longitude,x:me.x,y:me.y}; gpsGood=true; say('Tracking you. Walk and the dot follows',2500); return }
-    gpsGood=true;
+    const c=p.coords, now=performance.now(); $('acc').setAttribute('r',c.accuracy>8?Math.min(c.accuracy,60)/M:0);
+    if(c.accuracy>12){                                       // indoors / weak: ignore GPS, steps move the dot
+      if(gpsGood){ gpsGood=false; say('GPS is weak here, steps take over',3000) } anchor=null; lastTgt=null; return }
+    const abs=GEO.lat!=null;
+    if(abs) anchor={lat:GEO.lat,lng:GEO.lng,x:300,y:270};    // exact campus coordinates known
+    else if(!anchor){ anchor={lat:c.latitude,lng:c.longitude,x:me.x,y:me.y}; lastTgt=null; return }
     const R=6371000, la=anchor.lat*Math.PI/180, east=(c.longitude-anchor.lng)*Math.PI/180*R*Math.cos(la), north=(c.latitude-anchor.lat)*Math.PI/180*R;
     const d=Math.hypot(east,north), phi=Math.atan2(east,north)-NORTH*Math.PI/180;
     const tx=clamp(anchor.x+d*Math.sin(phi)/M,6,W-6), ty=clamp(anchor.y-d*Math.cos(phi)/M,6,H-6);
+    const moved=lastTgt?Math.hypot(tx-lastTgt.x,ty-lastTgt.y):0; lastTgt={x:tx,y:ty};
+    if(moved>.5) lastGpsMove=now;
+    const was=gpsGood; gpsGood=now-lastGpsMove<5000;        // GPS counts only while its position is really changing
+    if(gpsGood&&!was) say('Tracking you with GPS',2000);
+    if(!gpsGood){                                            // GPS says you are standing still: keep the steps, and re-pin GPS to where the dot is now
+      if(!abs&&stepMoved){ anchor={lat:c.latitude,lng:c.longitude,x:me.x,y:me.y}; stepMoved=false; lastTgt=null } return }
     glideTo={x:tx,y:ty}; if(!gliding){ gliding=true; glide() }
   }
   let glideTo=null, gliding=false;
@@ -577,9 +584,9 @@ window.addEventListener('error',e=>{ const t=document.getElementById('bugToast')
     if(Math.hypot(dx,dy)<.3){ me={x:glideTo.x,y:glideTo.y}; glideTo=null; gliding=false; update(); return }
     me={x:me.x+dx*.35,y:me.y+dy*.35}; update(); setTimeout(glide,90);
   }
-  async function toggleWalk(){
-    if(walking){ walking=false; removeEventListener('devicemotion',onMotion); if(gps!=null){navigator.geolocation.clearWatch(gps); gps=null; $('acc').setAttribute('r',0)}
-      anchor=null; gpsGood=false; if(wl){ try{wl.release()}catch(_){} wl=null }
+  async function toggleWalk(auto){
+    if(walking){ walking=false; removeEventListener('devicemotion',onMotion); motionOn=false; if(gps!=null){navigator.geolocation.clearWatch(gps); gps=null; $('acc').setAttribute('r',0)}
+      anchor=null; gpsGood=false; lastTgt=null; if(wl){ try{wl.release()}catch(_){} wl=null }
       $('zWalk').setAttribute('aria-pressed',false); say('Walking mode off',2000); return }
     let motionOK=true;                                   // compass + step sensors; GPS below works without them
     try{
@@ -590,12 +597,40 @@ window.addEventListener('error',e=>{ const t=document.getElementById('bugToast')
     if(!motionOK&&!navigator.geolocation){ say('Motion access is blocked. Allow it in browser settings',4000); return }
     walking=true; sensed=false; $('zWalk').setAttribute('aria-pressed',true); if(motionOK) listenOri(); vf=mf; setFollow(true);
     if(navigator.geolocation) gps=navigator.geolocation.watchPosition(onGPS,()=>say('GPS unavailable, using steps',3000),{enableHighAccuracy:true,maximumAge:1000,timeout:20000});
-    if(motionOK) addEventListener('devicemotion',onMotion);
+    if(motionOK){ addEventListener('devicemotion',onMotion); motionOn=true }
     try{ if(navigator.wakeLock) navigator.wakeLock.request('screen').then(l=>{wl=l}).catch(()=>{}) }catch(_){}   // keep the screen on while walking
     say('Walking mode on: the dot moves as you walk',3000);
-    setTimeout(()=>{ if(walking&&motionOK&&!sensed&&!gpsGood&&heading==null) say('No motion sensors here. Use the arrow keys',5000) },2500);
+    setTimeout(()=>{ if(!auto&&walking&&motionOK&&!sensed&&!gpsGood&&heading==null) say('No motion sensors here. Use the arrow keys',5000) },2500);
   }
-  $('zWalk').onclick=toggleWalk;
+  /* Automatic: opening the 2D map turns walking on by itself, so the dot moves as you walk. Android and desktop start straight away;
+     iPhone only allows motion access from a tap, so it is asked on the tap that opens 2D or on the first tap on the map. The button turns it off (remembered). */
+  const needsTap=()=>!!((window.DeviceOrientationEvent&&DeviceOrientationEvent.requestPermission)||(window.DeviceMotionEvent&&DeviceMotionEvent.requestPermission));
+  function autoWalk(){
+    if(walking||walkAsk) return;
+    try{ if(localStorage.getItem('gcw-walk-off')) return }catch(_){}
+    walkAsk=true; const go=()=>toggleWalk(true).then(()=>{ walkAsk=false },()=>{ walkAsk=false });
+    if(!needsTap()||gest){ go(); return }
+    // no tap yet: ask anyway. Android says yes; iPhone refuses until a tap, so it starts with GPS only and the first tap on the map adds the compass and steps
+    const q=[]; try{ if(window.DeviceOrientationEvent&&DeviceOrientationEvent.requestPermission) q.push(DeviceOrientationEvent.requestPermission());
+                     if(window.DeviceMotionEvent&&DeviceMotionEvent.requestPermission) q.push(DeviceMotionEvent.requestPermission()) }catch(_){}
+    Promise.all(q.map(x=>Promise.resolve(x).catch(()=>'denied'))).then(r=>{ if(!walking) go(); else walkAsk=false });
+  }
+  function upgradeSensors(){                               // inside a tap: walking started without the compass/step sensors, so ask now
+    if(!walking||motionOn||!needsTap()) return;
+    const q=[]; try{ if(window.DeviceOrientationEvent&&DeviceOrientationEvent.requestPermission) q.push(DeviceOrientationEvent.requestPermission());
+                     if(window.DeviceMotionEvent&&DeviceMotionEvent.requestPermission) q.push(DeviceMotionEvent.requestPermission()) }catch(_){}
+    Promise.all(q.map(x=>Promise.resolve(x).catch(()=>'denied'))).then(r=>{
+      if(r.length&&r.every(v=>v==='granted')&&walking&&!motionOn){ listenOri(); addEventListener('devicemotion',onMotion); motionOn=true; say('Compass and steps on. Walk and the dot follows',2500) } });
+  }
+  ['click','touchend'].forEach(t=>addEventListener(t,e=>{
+    gest=true; setTimeout(()=>{ gest=false },0);
+    if(view==='2d'&&e.target&&e.target.closest&&e.target.closest('#map2d,#zc,#fl,#nearby,#hint')){ autoWalk(); upgradeSensors() }
+  },true));
+  $('zWalk').onclick=()=>{
+    if(walkAsk) return;
+    try{ if(walking) localStorage.setItem('gcw-walk-off','1'); else localStorage.removeItem('gcw-walk-off') }catch(_){}
+    toggleWalk(false);
+  };
   addEventListener('keydown',e=>{
     if(view!=='2d'||/SELECT|INPUT|TEXTAREA/.test(e.target.tagName)) return;
     const k={ArrowUp:[0,-1,0],ArrowDown:[0,1,180],ArrowLeft:[-1,0,270],ArrowRight:[1,0,90]}[e.key]; if(!k) return;
@@ -605,6 +640,7 @@ window.addEventListener('error',e=>{ const t=document.getElementById('bugToast')
   /* ---- views ---- */
   function render(){
     closePhoto();
+    if(view==='2d') autoWalk();
     if(tg.on&&!(view==='3d'&&sub==='tour')) stopTg();
     if(sp&&sp.on&&!(view==='3d'&&sub==='space')) spaceLeave();
     const cams=view==='3d'&&sub==='cam';
@@ -617,10 +653,11 @@ window.addEventListener('error',e=>{ const t=document.getElementById('bugToast')
     if(view==='3d'&&sub==='tour'){ const r=pendingTour; pendingTour=null; requestAnimationFrame(()=>tourEnter(r)) }
   }
   function onOri(e){
-    if(e.type==='deviceorientationabsolute') gotAbs=true; else if(gotAbs) return;
     const h=e.webkitCompassHeading!=null?e.webkitCompassHeading:(e.alpha!=null?360-e.alpha:null);
-    if(h==null) return;
-    heading = heading==null ? h : (heading+((h-heading+540)%360-180)*.25+360)%360; update();
+    if(h==null) return;                                      // some browsers fire empty events first
+    if(e.type==='deviceorientationabsolute') gotAbs=true; else if(gotAbs) return;
+    heading = heading==null ? h : (heading+((h-heading+540)%360-180)*.25+360)%360;
+    const t=performance.now(); if(t-lastOri>100){ lastOri=t; update() }
   }
   const within=(pr,ms)=>Promise.race([pr,new Promise((_,no)=>setTimeout(()=>no(new Error('timeout')),ms))]);
   async function startCam(){
@@ -1146,7 +1183,7 @@ window.addEventListener('error',e=>{ const t=document.getElementById('bugToast')
   const turn=d=>{ if(!bc){ $('lMeta').textContent='Place the building first'; return } NORTH=((NORTH+d)%360+360)%360; saveGeo(); liveRefresh() };
   $('lRotL').onclick=()=>turn(-10); $('lRotR').onclick=()=>turn(10);
   $('lPlan').onclick=()=>{ view='2d'; render() };
-  if(bc) startTrack();                                     // building already placed: start following you straight away
+  if(bc) startTrack();                                     
   render(); frame(); update();
 })();
 </script>
