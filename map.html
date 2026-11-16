@@ -68,7 +68,13 @@ body{margin:0; background:var(--deep); color:var(--mint); font-family:var(--body
 #mvMsg{position:absolute; left:50%; top:50%; translate:-50% -50%; margin:0; max-width:300px; text-align:center; line-height:1.5; color:var(--mist); display:none}
 .ar-x{text-decoration:none}
 .modes{position:absolute; top:max(66px,calc(env(safe-area-inset-top) + 58px)); left:50%; translate:-50% 0; display:flex; padding:4px; border-radius:999px; background:rgba(8,48,31,.7); backdrop-filter:blur(10px)}
-.modes button{border:0; background:transparent; color:var(--mist); font:600 .88rem var(--body); padding:8px 16px; border-radius:999px; cursor:pointer}
+.modes button{border:0; background:transparent; color:var(--mist); font:600 .88rem/1.25 var(--body); padding:8px 16px; border-radius:999px; cursor:pointer; white-space:nowrap; flex:none}
+.modes{max-width:calc(100vw - 16px); overflow-x:auto; scrollbar-width:none} .modes::-webkit-scrollbar{display:none}
+/* smaller phones: tighter tabs so the two rows never wrap or collide */
+@media (max-width:420px){ .modes button{padding:8px 12px; font-size:.82rem} .ar-top{gap:8px; padding-left:10px; padding-right:10px} .ar-select{font-size:.95rem} }
+@media (max-width:350px){ .modes button{padding:7px 9px; font-size:.76rem} }
+@media (max-width:360px),(max-height:640px){ .zb{width:38px; height:38px} .zb svg{width:19px; height:19px} .zb{font-size:.82rem} .ar-card strong{font-size:1.05rem} }
+@media (max-height:520px){ .modes{top:max(10px,env(safe-area-inset-top))!important; left:auto; right:12px; translate:none} #sub{top:max(58px,calc(env(safe-area-inset-top) + 50px))!important} }
 .modes button[aria-selected=true]{background:var(--route); color:#1b3a10}
 .ar-note{top:118px}
 #start{position:absolute; inset:0; z-index:5; display:grid; place-items:center; padding:20px; background:linear-gradient(rgba(8,48,31,.82),rgba(8,48,31,.94)); backdrop-filter:blur(8px)}
