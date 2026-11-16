@@ -141,6 +141,7 @@ body.v2d #fl{display:flex}
 .hs{display:block; border:0; background:var(--route); color:#1b3a10; font:600 .8rem var(--body); padding:6px 11px; border-radius:999px; box-shadow:0 4px 14px rgba(0,0,0,.45); white-space:nowrap; pointer-events:none}
 .hs.me{background:#fff; color:#12301f}
 .hs.ph{pointer-events:auto; cursor:pointer; background:#fff; color:#12301f}
+#tGyro{display:none!important}   /* look-around is automatic now */
 #photoDock{position:absolute; z-index:4; left:14px; right:14px; max-width:520px; margin:0 auto; top:max(170px,calc(env(safe-area-inset-top) + 162px)); height:min(36vh,320px); border-radius:20px; overflow:hidden; display:none; background:#000; box-shadow:0 10px 30px rgba(0,0,0,.5); border:2px solid rgba(255,255,255,.85)}
 #photoDock.on{display:block}
 #dockEl{position:absolute; inset:0}
@@ -587,10 +588,10 @@ window.addEventListener('error',e=>{ const t=document.getElementById('bugToast')
   }
   $('v2').onclick=()=>{view='2d'; render()};
   $('vL').onclick=()=>{view='live'; render()};
-  $('v3').onclick=()=>{view='3d'; if(sub==='tour') pendingTour=cur; render()};   // 3D opens the selected room in the photo walk-through
+  $('v3').onclick=()=>{ if(sub==='tour') primeLook(); view='3d'; if(sub==='tour') pendingTour=cur; render()};   // 3D opens the selected room in the photo walk-through
   $('mCam').onclick=()=>{sub='cam'; render()};
   $('mMod').onclick=()=>{sub='model'; render()};
-  $('mTour').onclick=()=>{sub='tour'; render()};
+  $('mTour').onclick=()=>{ primeLook(); sub='tour'; render()};
   $('mSpace').onclick=()=>{sub='space'; render()};
   $('tMap').onclick=()=>{view='2d'; render()};
   $('startBtn').onclick=startCam;
@@ -621,7 +622,7 @@ window.addEventListener('error',e=>{ const t=document.getElementById('bugToast')
     $('mMeta').textContent=pick?'Tap the model where '+r.n+' is':FLOORS[r.f]+(p.exact?' · spot saved':' · estimated spot. Tap Place on model to fix it');
   }
   let pendingTour=null;
-  function openIn3D(r){ cur=r; sel.value=r.id; view='3d'; sub='tour'; pendingTour=r; render(); update() }
+  function openIn3D(r){ primeLook(); cur=r; sel.value=r.id; view='3d'; sub='tour'; pendingTour=r; render(); update() }
   mv.addEventListener('load',()=>{ photoPins(); if(pending){ const r=pending; pending=null; flyTo(r) } });
   $('mPick').onclick=()=>{ pick=!pick; $('mPick').setAttribute('aria-pressed',pick); flyTo(cur) };
   mv.addEventListener('click',e=>{
@@ -770,10 +771,11 @@ window.addEventListener('error',e=>{ const t=document.getElementById('bugToast')
       const sc=buildTour(); sc[id].yaw=yaw;
       tviewer=pannellum.viewer('tourEl',{default:{firstScene:id,sceneFadeDuration:700,hfov:100,minHfov:45,maxHfov:120,autoLoad:true,showControls:false,mouseZoom:true},scenes:sc});
       tviewer.on('scenechange',onScene); onScene(id);
-      try{ if(localStorage.getItem('gcw-look')&&!(window.DeviceOrientationEvent&&DeviceOrientationEvent.requestPermission)) startTg() }catch(_){}
+      autoLook();
     } else {
       tviewer.resize();
       if(r){ if(tviewer.getScene()===id) tviewer.setYaw(yaw); else go(id,yaw) } else tourRefresh();
+      autoLook();
     }
   }
   /* ---- Look where you look: the 360 view follows the direction the back of your phone points ----
@@ -810,7 +812,7 @@ window.addEventListener('error',e=>{ const t=document.getElementById('bugToast')
     addEventListener('deviceorientationabsolute',onTg); addEventListener('deviceorientation',onTg);
     $('tGyro').setAttribute('aria-pressed',true); $('tGyro').textContent='Looking with phone';
     try{ localStorage.setItem('gcw-look','1') }catch(_){}
-    setTimeout(()=>{ if(tg.on&&!tg.got){ $('tMeta').textContent='No motion sensors found on this device. Drag to look around'; stopTg() } },2500);
+    setTimeout(()=>{ if(tg.on&&!tg.got){ if(!lookWarned){ lookWarned=true; $('tMeta').textContent='No motion sensors found on this device. Drag to look around' } stopTg() } },2500);
   }
   $('tGyro').onclick=async()=>{
     if(!tviewer) return;
@@ -821,6 +823,20 @@ window.addEventListener('error',e=>{ const t=document.getElementById('bugToast')
     }catch(e){ $('tMeta').textContent='Motion access is blocked or not available on this device'; return }
     startTg();
   };
+  /* The Walk view follows the phone by itself, no button.
+     Android and desktop start straight away. iPhone only allows motion access from a tap, so it is asked on the tap that opens Walk
+     (3D button, Walk tab or a room) and, if that was missed, on the first tap inside the view. */
+  let lookAsk=null, lookWarned=false, lookWait=false;
+  function primeLook(){ try{ if(window.DeviceOrientationEvent&&DeviceOrientationEvent.requestPermission&&!lookAsk) lookAsk=DeviceOrientationEvent.requestPermission().then(r=>r==='granted').catch(()=>false) }catch(_){} }
+  function autoLook(){
+    if(tg.on||!tviewer||!window.DeviceOrientationEvent) return;
+    if(!DeviceOrientationEvent.requestPermission){ startTg(); return }
+    (lookAsk||Promise.resolve(false)).then(ok=>{
+      if(ok){ lookWait=false; if(!tg.on&&view==='3d'&&sub==='tour') startTg() }
+      else { lookAsk=null; lookWait=true; $('tMeta').textContent='Tap the view once to turn on look-around' }
+    });
+  }
+  $('tourEl').addEventListener('click',()=>{ if(lookWait&&!tg.on){ lookWait=false; primeLook(); autoLook() } });
   $('tCenter').onclick=()=>{ tg.off=null; tg.poff=0; if(tg.on&&tg.h!=null&&tviewer){ tg.off=tviewer.getYaw()-tg.h } };
   // a finger drag takes over for a moment, then the phone carries on from where you left the view
   const tgEl=$('tourEl');
