@@ -232,6 +232,41 @@ a{color:inherit}
   display:flex; flex-wrap:wrap; gap:12px 28px; justify-content:space-between; color:var(--mist); font-size:.9rem}
 .foot a{text-underline-offset:4px}
 @media (max-width:900px){ .contact{grid-template-columns:1fr} }
+
+/* ---------- org cards: logo watermark + slow gradient ---------- */
+/* To use real logos, set --logo per org, e.g. .o-sc{--logo:url("logos/ssc.png")} */
+.o-sc{--logo:url("logos/sc.png")}
+.o-cs{--logo:url("logos/elites.png")}
+.o-ht{--logo:url("logos/images.png")}
+.o-te{--logo:url("logos/specs.png")}
+.o-ba{--logo:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cpath d='M14 84h72' fill='none' stroke='%2310281b' stroke-width='5' stroke-linecap='round' stroke-linejoin='round'/%3E%3Crect x='20' y='54' width='14' height='30' fill='%2310281b'/%3E%3Crect x='43' y='36' width='14' height='48' fill='%2310281b'/%3E%3Crect x='66' y='16' width='14' height='68' fill='%2310281b'/%3E%3C/svg%3E")}
+.o-cp{--logo:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect x='14' y='16' width='72' height='68' rx='8' fill='none' stroke='%2310281b' stroke-width='5' stroke-linecap='round' stroke-linejoin='round'/%3E%3Cpath d='M26 34h48M26 50h22M26 66h22M58 50h16v16H58z' fill='none' stroke='%2310281b' stroke-width='5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E")}
+.o-pa{--logo:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cpath d='M38 72V22l42-10v50' fill='none' stroke='%2310281b' stroke-width='5' stroke-linecap='round' stroke-linejoin='round'/%3E%3Ccircle cx='28' cy='74' r='11' fill='%2310281b'/%3E%3Ccircle cx='70' cy='64' r='11' fill='%2310281b'/%3E%3C/svg%3E")}
+.o-rc{--logo:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cpath d='M38 10h24v28h28v24H62v28H38V62H10V38h28z' fill='%2310281b'/%3E%3C/svg%3E")}
+.ocard,.grid li{
+  --c2:color-mix(in srgb, var(--c) 78%, #ffffff);
+  --c3:color-mix(in srgb, var(--c) 90%, #0f4a33);
+  background:var(--c);
+  background-image:linear-gradient(120deg, var(--c) 0%, var(--c2) 50%, var(--c3) 100%);
+  background-size:260% 260%;
+  animation:cardfade 18s ease-in-out infinite;
+}
+.ocard:nth-child(2n),.grid li:nth-child(2n){animation-duration:22s; animation-delay:-6s}
+.ocard:nth-child(3n),.grid li:nth-child(3n){animation-duration:26s; animation-delay:-11s}
+@keyframes cardfade{0%,100%{background-position:0% 0%} 50%{background-position:100% 100%}}
+/* big, full-color logo at top-left that melts into the card color toward the bottom-right */
+.ocard,.grid li{position:relative; overflow:hidden; isolation:isolate}
+.ocard::after,.grid li::after{
+  content:""; position:absolute; z-index:-1; pointer-events:none;
+  left:-6%; top:-8%; width:85%; aspect-ratio:1;
+  background:var(--logo) left top/contain no-repeat; opacity:1;
+  -webkit-mask-image:linear-gradient(135deg,#000 0%,#000 22%,rgba(0,0,0,.55) 48%,transparent 82%);
+          mask-image:linear-gradient(135deg,#000 0%,#000 22%,rgba(0,0,0,.55) 48%,transparent 82%);
+}
+.grid li::after{width:95%; left:-8%; top:-6%}
+/* monogram box is replaced by the background logo; keep its space so layout doesn't shift */
+.ocard .mono,.grid .mono{visibility:hidden}
+@media (prefers-reduced-motion:reduce){ .ocard,.grid li{animation:none} }
 </style>
 </head>
 <body>
@@ -286,14 +321,14 @@ a{color:inherit}
       <h2>Student organizations</h2>
       <!-- SAMPLE ORGS: replace with your real list -->
       <ul class="grid">
-        <li style="--c:#f6d55c"><div class="mono" aria-hidden="true">SC</div><div><b>Supreme Student Council</b><span>Student government</span></div></li>
-        <li style="--c:#8fe0ae"><div class="mono" aria-hidden="true">CS</div><div><b>Computer Studies Society</b><span>Computer studies</span></div></li>
-        <li style="--c:#f2a483"><div class="mono" aria-hidden="true">HT</div><div><b>Hospitality &amp; Tourism Society</b><span>Hospitality, tourism</span></div></li>
-        <li style="--c:#9cc4f5"><div class="mono" aria-hidden="true">TE</div><div><b>Teacher Education Society</b><span>Education</span></div></li>
-        <li style="--c:#d0b0f2"><div class="mono" aria-hidden="true">BA</div><div><b>Business Admin Society</b><span>Business</span></div></li>
-        <li style="--c:#f5b3cf"><div class="mono" aria-hidden="true">CP</div><div><b>Campus Press</b><span>Student publication</span></div></li>
-        <li style="--c:#f3e9a8"><div class="mono" aria-hidden="true">PA</div><div><b>Performing Arts Guild</b><span>Music, dance, theater</span></div></li>
-        <li style="--c:#f08a8a"><div class="mono" aria-hidden="true">RC</div><div><b>Red Cross Youth</b><span>Community service</span></div></li>
+        <li class="o-sc" style="--c:#f6d55c"><div class="mono" aria-hidden="true">SC</div><div><b>CCS Student Council</b><span>Student government</span></div></li>
+        <li class="o-cs" style="--c:#8fe0ae"><div class="mono" aria-hidden="true">CS</div><div><b>ELITES</b><span>Computer studies</span></div></li>
+        <li class="o-ht" style="--c:#f2a483"><div class="mono" aria-hidden="true">HT</div><div><b>IMAGES</b><span>Hospitality, tourism</span></div></li>
+        <li class="o-te" style="--c:#9cc4f5"><div class="mono" aria-hidden="true">TE</div><div><b>Teacher Education Society</b><span>Education</span></div></li>
+        <li class="o-ba" style="--c:#d0b0f2"><div class="mono" aria-hidden="true">BA</div><div><b>Business Admin Society</b><span>Business</span></div></li>
+        <li class="o-cp" style="--c:#f5b3cf"><div class="mono" aria-hidden="true">CP</div><div><b>Campus Press</b><span>Student publication</span></div></li>
+        <li class="o-pa" style="--c:#f3e9a8"><div class="mono" aria-hidden="true">PA</div><div><b>Performing Arts Guild</b><span>Music, dance, theater</span></div></li>
+        <li class="o-rc" style="--c:#f08a8a"><div class="mono" aria-hidden="true">RC</div><div><b>Red Cross Youth</b><span>Community service</span></div></li>
       </ul>
     </div>
   </section>
@@ -305,14 +340,14 @@ a{color:inherit}
     <p>Find who runs what on campus, and where to reach them.</p>
     <!-- SAMPLE ORGS: replace with your real list -->
     <ul class="ocards">
-      <li class="ocard" style="--c:#f6d55c"><div class="mono" aria-hidden="true">SC</div><h3>Supreme Student Council</h3><p>The student government. Speaks for students and runs college-wide events.</p><a href="#contact">Contact</a></li>
-      <li class="ocard" style="--c:#8fe0ae"><div class="mono" aria-hidden="true">CS</div><h3>Computer Studies Society</h3><p>Workshops, hackathons and tech talks for computer studies students.</p><a href="#contact">Contact</a></li>
-      <li class="ocard" style="--c:#f2a483"><div class="mono" aria-hidden="true">HT</div><h3>Hospitality &amp; Tourism Society</h3><p>Hands-on events and industry visits for hospitality and tourism students.</p><a href="#contact">Contact</a></li>
-      <li class="ocard" style="--c:#9cc4f5"><div class="mono" aria-hidden="true">TE</div><h3>Teacher Education Society</h3><p>Learning sessions and community teaching programs for future educators.</p><a href="#contact">Contact</a></li>
-      <li class="ocard" style="--c:#d0b0f2"><div class="mono" aria-hidden="true">BA</div><h3>Business Admin Society</h3><p>Seminars, case contests and entrepreneurship activities.</p><a href="#contact">Contact</a></li>
-      <li class="ocard" style="--c:#f5b3cf"><div class="mono" aria-hidden="true">CP</div><h3>Campus Press</h3><p>The student publication: news, features and photojournalism.</p><a href="#contact">Contact</a></li>
-      <li class="ocard" style="--c:#f3e9a8"><div class="mono" aria-hidden="true">PA</div><h3>Performing Arts Guild</h3><p>Music, dance and theater groups that perform at college events.</p><a href="#contact">Contact</a></li>
-      <li class="ocard" style="--c:#f08a8a"><div class="mono" aria-hidden="true">RC</div><h3>Red Cross Youth</h3><p>Volunteer first aid, blood drives and community service.</p><a href="#contact">Contact</a></li>
+      <li class="ocard o-sc" style="--c:#f6d55c"><div class="mono" aria-hidden="true">SC</div><h3>CCS Student Council</h3><p>The student government. Speaks for students and runs college-wide events.</p><a href="#contact">Contact</a></li>
+      <li class="ocard o-cs" style="--c:#8fe0ae"><div class="mono" aria-hidden="true">CS</div><h3>ELITES</h3><p>Workshops, hackathons and tech talks for computer studies students.</p><a href="#contact">Contact</a></li>
+      <li class="ocard o-ht" style="--c:#f2a483"><div class="mono" aria-hidden="true">HT</div><h3>IMAGES</h3><p>Hands-on events and industry visits for hospitality and tourism students.</p><a href="#contact">Contact</a></li>
+      <li class="ocard o-te" style="--c:#9cc4f5"><div class="mono" aria-hidden="true">TE</div><h3>SPECS</h3><p>Learning sessions and community teaching programs for future educators.</p><a href="#contact">Contact</a></li>
+      <li class="ocard o-ba" style="--c:#d0b0f2"><div class="mono" aria-hidden="true">BA</div><h3>Business Admin Society</h3><p>Seminars, case contests and entrepreneurship activities.</p><a href="#contact">Contact</a></li>
+      <li class="ocard o-cp" style="--c:#f5b3cf"><div class="mono" aria-hidden="true">CP</div><h3>Campus Press</h3><p>The student publication: news, features and photojournalism.</p><a href="#contact">Contact</a></li>
+      <li class="ocard o-pa" style="--c:#f3e9a8"><div class="mono" aria-hidden="true">PA</div><h3>Performing Arts Guild</h3><p>Music, dance and theater groups that perform at college events.</p><a href="#contact">Contact</a></li>
+      <li class="ocard o-rc" style="--c:#f08a8a"><div class="mono" aria-hidden="true">RC</div><h3>Red Cross Youth</h3><p>Volunteer first aid, blood drives and community service.</p><a href="#contact">Contact</a></li>
     </ul>
   </section>
 

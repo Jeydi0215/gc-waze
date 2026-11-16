@@ -310,6 +310,7 @@ body.live .ar-world,body.live #arCam,body.live .ar-tint,body.live .ar-bg,body.li
     <div><strong id="lName">Live map</strong><span id="lMeta">Allow location to see where you are</span></div>
     <button class="btn" id="lFollow" aria-pressed="true">Follow me</button>
     <button class="btn" id="lDoor">I’m at the front door</button>
+    <button class="btn" id="lCopy">Copy campus code</button>
     <button class="btn" id="lPlan">Floor plan</button>
     <button class="btn" id="lRotL" aria-label="Turn the building left">⟲ Turn</button>
     <button class="btn" id="lRotR" aria-label="Turn the building right">Turn ⟳</button>
@@ -372,6 +373,7 @@ window.addEventListener('error',e=>{ const t=document.getElementById('bugToast')
       add(f,'Lift',288,262,24,20,'lift');
     }
   });
+  let prevView=null, snapNext=true, located=true;
   let me={x:300,y:500}, mf=0, vf=0, cur=rooms.find(r=>r.n==='Computer Lab 2'), heading=null, stream=null, asked=false, view='2d', sub='tour';
   let vw=300, vc={x:me.x,y:me.y}, follow=true, placing=false, walking=false, gps=null, gotAbs=false, oriOn=false, sensed=false, lastStep=0, above=false, g0=9.8, hintT=0;
 
@@ -472,7 +474,7 @@ window.addEventListener('error',e=>{ const t=document.getElementById('bugToast')
   function zoomBy(f){vw=clamp(vw*f,VMIN,VMAX); fit(); labels()}
   function setFollow(v){follow=v; $('zFollow').setAttribute('aria-pressed',v); fit()}
 
-  function update(){ refreshPhotoBtns(); if(liveOn) liveRefresh();
+  function update(){ saveFloor(); refreshPhotoBtns(); if(liveOn) liveRefresh();
     const rt=route(), dm=Math.round(rt.d*M), b=(Math.atan2(rt.tx-me.x,-(rt.ty-me.y))*180/Math.PI+360)%360;
     // floors
     FLOORS.forEach((_,f)=>{$('fg-'+f).style.display=f===vf?'':'none'});
@@ -481,7 +483,7 @@ window.addEventListener('error',e=>{ const t=document.getElementById('bugToast')
     drawRoute(rt);
     // me + pin
     $('me').setAttribute('transform','translate('+me.x+' '+me.y+')');
-    $('me').classList.toggle('ghost',vf!==mf); $('youTxt').textContent=vf===mf?'You are here':'You: '+FLOORS[mf];
+    $('me').classList.toggle('ghost',vf!==mf); $('youTxt').textContent=vf===mf?'You are here · '+FLOORS[mf]:'You: '+FLOORS[mf];
     const pp=vf===mf?{x:rt.tx,y:rt.ty}:(vf===cur.f?ctr(cur):null);
     $('pin').setAttribute('display',pp?'':'none'); if(pp) $('pin').setAttribute('transform','translate('+pp.x+' '+(pp.y-4)+')');
     const cone=$('cone'); cone.setAttribute('display',heading==null?'none':''); cone.setAttribute('transform','rotate('+((heading||0)-NORTH)+')');
@@ -640,6 +642,8 @@ window.addEventListener('error',e=>{ const t=document.getElementById('bugToast')
   /* ---- views ---- */
   function render(){
     closePhoto();
+    if(view==='2d'&&prevView!=='2d'&&bc&&lPos&&snapMe(true)) snapNext=lPos.acc>25;
+    prevView=view;
     if(view==='2d') autoWalk();
     if(tg.on&&!(view==='3d'&&sub==='tour')) stopTg();
     if(sp&&sp.on&&!(view==='3d'&&sub==='space')) spaceLeave();
@@ -1086,8 +1090,12 @@ window.addEventListener('error',e=>{ const t=document.getElementById('bugToast')
      then drag the green label and tap Turn until the outline sits on the real building. It is remembered on this phone,
      and from then on your position also moves the dot on the floor plan. GPS indoors can be off by 10 m or more. */
   const D2R=Math.PI/180, MLAT=111320;
+  /* Where the building sits on the real map. Starting guess = Gordon College's listed campus point (Wikipedia: 14.83293 N, 120.28217 E), map top = north.
+     It is only approximate: stand at the front door and line the outline up on the Live map, tap "Copy campus code" and paste the line over this one. */
+  const CAMPUS={lat:14.83293,lng:120.28217,north:0};
   let bc=null, liveOn=false, lf=null, lWatch=null, lFollow=true, lPos=null, lFirst=true, lKit=null;   // bc = lat/lng of the building centre (map point 300,225)
   try{ const g=JSON.parse(localStorage.getItem('gcw-geo')||'null'); if(g&&g.lat!=null){ bc={lat:g.lat,lng:g.lng}; NORTH=g.north||0 } }catch(e){}
+  if(!bc&&CAMPUS.lat!=null){ bc={lat:CAMPUS.lat,lng:CAMPUS.lng}; NORTH=CAMPUS.north||0 }
   function mapToLL(x,y){
     const dx=(x-300)*M, dy=(y-225)*M, d=Math.hypot(dx,dy), b=Math.atan2(dx,-dy)+NORTH*D2R;
     return {lat:bc.lat+d*Math.cos(b)/MLAT, lng:bc.lng+d*Math.sin(b)/(MLAT*Math.cos(bc.lat*D2R))};
@@ -1140,9 +1148,47 @@ window.addEventListener('error',e=>{ const t=document.getElementById('bugToast')
       if(liveOn) $('lMeta').textContent=m; else say(m,4000) },{enableHighAccuracy:true,maximumAge:1000,timeout:20000});
     if(!(window.DeviceOrientationEvent&&DeviceOrientationEvent.requestPermission)) listenOri();
   }
+  /* The floor plan dot starts on where you really are (GPS through the building placement), not on the gate.
+     It jumps straight there on the first fix and each time the 2D view opens, then glides as you walk. */
+  /* ---- which floor you are on ----
+     1. Remembered between visits (6 h), and every confirmation (stairs, lift, "I'm on 2F now") is saved.
+     2. Outside the building you are on the ground floor, and that also re-zeroes the height reading.
+     3. Inside, the phone's GPS height is compared with that zero (one storey = 3.6 m). It only switches floor after four
+        steady readings agree, and only when the phone reports a usable height accuracy. Browsers cannot read the barometer,
+        so on phones that give no height the floor stays what you last confirmed. */
+  const FH=3.6; let baseAlt=null, altBuf=[], altVotes=0, savedFloor=-1;
+  try{ const f=JSON.parse(localStorage.getItem('gcw-floor')||'null'); if(f&&Date.now()-f.t<6*3600e3&&f.f>=0&&f.f<FLOORS.length){ mf=f.f; vf=f.f } }catch(_){}
+  const med=a=>{ const t=[...a].sort((x,y)=>x-y); return t[Math.floor(t.length/2)] };
+  function saveFloor(){
+    if(mf===savedFloor) return; savedFloor=mf;
+    try{ localStorage.setItem('gcw-floor',JSON.stringify({f:mf,t:Date.now()})) }catch(_){}
+    if(altBuf.length>=3) baseAlt=med(altBuf)-mf*FH;                     // you confirmed this floor: pin the height reading to it
+  }
+  function trackFloor(){
+    if(!bc||!lPos||altBuf.length<3) return;
+    const m=med(altBuf), pos=llToMap(lPos.lat,lPos.lng), outside=pos.y>305&&Math.abs(pos.x-300)<400&&pos.y<900;
+    if(outside){ baseAlt=m; altVotes=0; if(mf!==0){ mf=0; vf=0; say('You are outside, on the ground floor',3000); update() } return }
+    if(baseAlt==null){ baseAlt=m-mf*FH; return }
+    const rel=m-baseAlt, g=clamp(Math.round(rel/FH),0,FLOORS.length-1);
+    if(g!==mf&&Math.abs(rel-g*FH)<FH*.3){ if(++altVotes>=4){ altVotes=0; mf=g; vf=g; say('You are on '+FLOORS[g],3000); update() } } else altVotes=0;
+  }
+  function snapMe(center){
+    if(!bc||!lPos||lPos.acc>100) return false;
+    const m=llToMap(lPos.lat,lPos.lng);
+    if(Math.abs(m.x-300)>500||Math.abs(m.y-225)>500){                       // more than ~250 m from the campus: keep the gate instead of pinning the dot to an edge
+      if(!located){ located=true; $('me').style.visibility=''; say('You are not at the campus. Showing the main gate',5000) }
+      return false;
+    }
+    me={x:clamp(m.x,6,W-6),y:clamp(m.y,6,H-6)}; glideTo=null; anchor=null; lastTgt=null; stepMoved=false;
+    if(!located){ located=true; $('me').style.visibility='' }
+    if(center&&m.x>-60&&m.x<W+60&&m.y>-60&&m.y<H+60){ vc={x:me.x,y:me.y}; vw=Math.min(vw,440); setFollow(false) }   // open the map on you, if you are on or near the campus
+    return true;
+  }
   function onLive(p){
     const c=p.coords; lPos={lat:c.latitude,lng:c.longitude,acc:c.accuracy,course:(c.heading!=null&&!isNaN(c.heading))?c.heading:null};
-    if(bc&&c.accuracy<=40&&!walking){                      // the floor plan dot follows you, in every view
+    if(c.altitude!=null&&c.altitudeAccuracy!=null&&c.altitudeAccuracy<=10){ altBuf.push(c.altitude); if(altBuf.length>7) altBuf.shift(); trackFloor() }
+    if(bc&&snapNext&&c.accuracy<=100){ snapMe(view==='2d'); snapNext=c.accuracy>25; update() }   // first fix: jump to the real spot
+    else if(bc&&c.accuracy<=40&&!walking){                      // the floor plan dot follows you, in every view
       const m=llToMap(c.latitude,c.longitude); glideTo={x:clamp(m.x,6,W-6),y:clamp(m.y,6,H-6)}; if(!gliding){ gliding=true; glide() }
       $('acc').setAttribute('r',c.accuracy>8?Math.min(c.accuracy,60)/M:0);
     }
@@ -1155,6 +1201,11 @@ window.addEventListener('error',e=>{ const t=document.getElementById('bugToast')
     if(lFirst){ lFirst=false; lf.setView(ll,18) } else if(lFollow) lf.panTo(ll,{animate:true,duration:.6});
     liveRefresh();
   }
+  $('lCopy').onclick=()=>{
+    if(!bc){ $('lMeta').textContent='Place the building on the map first'; return }
+    const t='const CAMPUS={lat:'+bc.lat.toFixed(6)+',lng:'+bc.lng.toFixed(6)+',north:'+Math.round(NORTH)+'};';
+    (navigator.clipboard?navigator.clipboard.writeText(t):Promise.reject()).then(()=>{ $('lMeta').textContent='Copied. Paste it over the CAMPUS line in map.html' }).catch(()=>{ $('lMeta').textContent=t });
+  };
   function liveRefresh(){
     if(!lf||!liveOn) return; const k=lKit, deg=heading!=null?heading:(lPos&&lPos.course!=null?lPos.course:null), cone=$('lfCone');
     if(cone) cone.style.display=deg==null?'none':'', cone&&deg!=null&&(cone.style.transform='rotate('+deg+'deg)');
@@ -1183,7 +1234,8 @@ window.addEventListener('error',e=>{ const t=document.getElementById('bugToast')
   const turn=d=>{ if(!bc){ $('lMeta').textContent='Place the building first'; return } NORTH=((NORTH+d)%360+360)%360; saveGeo(); liveRefresh() };
   $('lRotL').onclick=()=>turn(-10); $('lRotR').onclick=()=>turn(10);
   $('lPlan').onclick=()=>{ view='2d'; render() };
-  if(bc) startTrack();                                     
+  if(bc){ startTrack(); located=false; $('me').style.visibility='hidden'; say('Finding your location…',6000)   // placed already: follow you straight away
+    setTimeout(()=>{ if(!located){ located=true; $('me').style.visibility=''; say('Could not find you yet. Showing the main gate',4000) } },9000) }                                     
   render(); frame(); update();
 })();
 </script>
