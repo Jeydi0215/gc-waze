@@ -270,6 +270,7 @@ body.live .ar-world,body.live #arCam,body.live .ar-tint,body.live .ar-bg,body.li
   <div class="mcard tcard" id="tcard">
     <div><strong id="tName">Walk-through</strong><span id="tMeta">Tap the arrows to move, tap a door to go in</span></div>
     <button class="btn" id="tGyro" aria-pressed="false">Look around with phone</button>
+    <button class="btn" id="tCenter">Recenter</button>
     <button class="btn" id="tMap">Show on 2D map</button>
   </div>
   <div class="edge l" id="edgeL">&#8592; Turn left</div>
@@ -555,6 +556,7 @@ window.addEventListener('error',e=>{ const t=document.getElementById('bugToast')
   /* ---- views ---- */
   function render(){
     closePhoto();
+    if(tg.on&&!(view==='3d'&&sub==='tour')) stopTg();
     if(sp&&sp.on&&!(view==='3d'&&sub==='space')) spaceLeave();
     const cams=view==='3d'&&sub==='cam';
     document.body.classList.toggle('v2d',view==='2d'); document.body.classList.toggle('model',view==='3d'&&sub==='model'); document.body.classList.toggle('tour',view==='3d'&&sub==='tour'); document.body.classList.toggle('space',view==='3d'&&sub==='space'); $('mSpace').setAttribute('aria-selected',sub==='space'); if(view==='3d'&&sub==='space') spaceEnter(); $('mTour').setAttribute('aria-selected',sub==='tour');
@@ -751,6 +753,7 @@ window.addEventListener('error',e=>{ const t=document.getElementById('bugToast')
       : (cur.f!==m.f && !m.out ? 'Take the lift or stairs to '+FLOORS[cur.f]+', then follow the yellow markers' : 'Follow the yellow markers to '+cur.n+' ('+FLOORS[cur.f]+')');
   }
   function onScene(id){
+    if(tg.on){ tg.off=null; tg.poff=0 }
     live=[]; const m=tmeta[id]; me={x:m.x,y:m.y}; mf=m.f; vf=m.f; update(); tourHint(id);
   }
   function tourRefresh(){ if(!tviewer) return; live.forEach(h=>h.div.classList.toggle('dest',!!h.a.test())); tourHint(tviewer.getScene()) }
@@ -767,19 +770,62 @@ window.addEventListener('error',e=>{ const t=document.getElementById('bugToast')
       const sc=buildTour(); sc[id].yaw=yaw;
       tviewer=pannellum.viewer('tourEl',{default:{firstScene:id,sceneFadeDuration:700,hfov:100,minHfov:45,maxHfov:120,autoLoad:true,showControls:false,mouseZoom:true},scenes:sc});
       tviewer.on('scenechange',onScene); onScene(id);
+      try{ if(localStorage.getItem('gcw-look')&&!(window.DeviceOrientationEvent&&DeviceOrientationEvent.requestPermission)) startTg() }catch(_){}
     } else {
       tviewer.resize();
       if(r){ if(tviewer.getScene()===id) tviewer.setYaw(yaw); else go(id,yaw) } else tourRefresh();
     }
   }
+  /* ---- Look where you look: the 360 view follows the direction the back of your phone points ----
+     It keeps following when you tap an arrow to move, and dragging with a finger still works (it carries on from where you dragged).
+     The view starts out facing the way you are walking; Recenter lines it up again with where the phone points now.
+     Needs https, and motion permission on iPhone. */
+  const tg={on:false,off:null,poff:0,h:null,p:null,drag:false,abs:false,raf:0,got:false};
+  const wrap180=a=>(a+540)%360-180;
+  function tgVec(e){                                       // where the phone's back camera points, as east / north / up
+    const D=Math.PI/180, a=e.alpha*D, b=e.beta*D, g=e.gamma*D;
+    const x=Math.cos(a)*Math.sin(g)+Math.sin(a)*Math.sin(b)*Math.cos(g),
+          y=Math.sin(a)*Math.sin(g)-Math.cos(a)*Math.sin(b)*Math.cos(g),
+          z=Math.cos(b)*Math.cos(g);
+    return {e:-x,n:-y,u:-z};
+  }
+  function onTg(e){
+    if(e.alpha==null||e.beta==null) return;                // some browsers fire empty events first
+    if(e.type==='deviceorientationabsolute') tg.abs=true; else if(tg.abs) return;
+    tg.got=true;
+    const v=tgVec(e), h=Math.atan2(v.e,v.n)*180/Math.PI, p=Math.asin(clamp(v.u,-1,1))*180/Math.PI;
+    tg.h=tg.h==null?h:tg.h+wrap180(h-tg.h)*.3; tg.p=tg.p==null?p:tg.p+(p-tg.p)*.3;
+    if(tg.off==null&&tviewer&&!tg.drag){ tg.off=tviewer.getYaw()-tg.h; tg.poff=0 }
+    if(tg.drag||tg.raf||tg.off==null) return;
+    tg.raf=requestAnimationFrame(()=>{ tg.raf=0; if(!tg.on||!tviewer||tg.drag) return;
+      tviewer.setYaw(wrap180(tg.h+tg.off),false); tviewer.setPitch(clamp(tg.p+tg.poff,-85,85),false) });
+  }
+  function stopTg(){
+    if(!tg.on) return; tg.on=false;
+    removeEventListener('deviceorientationabsolute',onTg); removeEventListener('deviceorientation',onTg);
+    $('tGyro').setAttribute('aria-pressed',false); $('tGyro').textContent='Look around with phone';
+  }
+  function startTg(){
+    tg.on=true; tg.h=null; tg.p=null; tg.off=null; tg.poff=0; tg.abs=false; tg.got=false;
+    addEventListener('deviceorientationabsolute',onTg); addEventListener('deviceorientation',onTg);
+    $('tGyro').setAttribute('aria-pressed',true); $('tGyro').textContent='Looking with phone';
+    try{ localStorage.setItem('gcw-look','1') }catch(_){}
+    setTimeout(()=>{ if(tg.on&&!tg.got){ $('tMeta').textContent='No motion sensors found on this device. Drag to look around'; stopTg() } },2500);
+  }
   $('tGyro').onclick=async()=>{
     if(!tviewer) return;
+    if(tg.on){ stopTg(); try{ localStorage.removeItem('gcw-look') }catch(_){}; return }
     try{
-      if(tviewer.isOrientationActive()){ tviewer.stopOrientation(); $('tGyro').setAttribute('aria-pressed',false); return }
-      if(window.DeviceOrientationEvent&&DeviceOrientationEvent.requestPermission){ await DeviceOrientationEvent.requestPermission() }
-      tviewer.startOrientation(); $('tGyro').setAttribute('aria-pressed',tviewer.isOrientationActive());
-    }catch(e){ $('tMeta').textContent='Motion access is blocked or not available on this device' }
+      if(!window.DeviceOrientationEvent) throw 1;
+      if(DeviceOrientationEvent.requestPermission && await DeviceOrientationEvent.requestPermission()!=='granted') throw 2;
+    }catch(e){ $('tMeta').textContent='Motion access is blocked or not available on this device'; return }
+    startTg();
   };
+  $('tCenter').onclick=()=>{ tg.off=null; tg.poff=0; if(tg.on&&tg.h!=null&&tviewer){ tg.off=tviewer.getYaw()-tg.h } };
+  // a finger drag takes over for a moment, then the phone carries on from where you left the view
+  const tgEl=$('tourEl');
+  tgEl.addEventListener('pointerdown',()=>{ if(tg.on) tg.drag=true },true);
+  ['pointerup','pointercancel'].forEach(t=>addEventListener(t,()=>{ if(tg.drag){ tg.drag=false; if(tg.h!=null&&tviewer){ tg.off=tviewer.getYaw()-tg.h; tg.poff=tviewer.getPitch()-tg.p } } }));
   /* ---- 3D space (three.js): stand inside the model and look around by moving your phone ----
      The camera copies the phone's orientation, so turning the phone left looks left, like a window into the place.
      Walk with Forward/Back. When you reach a room, tap Save spot so the room jumps there next time ("Copy spots" gives
